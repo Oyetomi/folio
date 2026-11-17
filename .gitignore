@@ -1,0 +1,16 @@
+# Compiled binaries
+/folio
+*.exe
+*.out
+
+# Generated build artifacts
+*.pdf
+*.tex
+*.log
+*.aux
+*.toc
+
+# OS / Editor files
+.DS_Store
+.idea/
+.vscode/

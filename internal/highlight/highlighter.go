@@ -46,6 +46,9 @@ func LatexEscape(text string) string {
 		case '↔':
 			b.WriteString(`$\leftrightarrow$`)
 		default:
+			if (ch >= 0x2600 && ch <= 0x27BF) || (ch >= 0xFE00 && ch <= 0xFE0F) || ch >= 0x1F000 {
+				continue
+			}
 			b.WriteRune(ch)
 		}
 	}

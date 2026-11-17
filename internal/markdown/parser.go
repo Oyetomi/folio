@@ -2,14 +2,17 @@ package markdown
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Oyetomi/folio/internal/config"
 	"github.com/Oyetomi/folio/internal/highlight"
@@ -38,13 +41,22 @@ var (
 	reInlineCode  = regexp.MustCompile("`([^`\\n]+)`")
 	reInlineMath  = regexp.MustCompile(`\$([^$\n]+)\$`)
 	reCamelBreak  = regexp.MustCompile(`([a-z])([A-Z])`)
-	reMDImage     = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)]+)\)$`)
-	reMDLink      = regexp.MustCompile(`\[([^\]]+)\]\(([^)\s]+)\)`)
-	reBold        = regexp.MustCompile(`\*\*([^*]+)\*\*`)
-	reItalic      = regexp.MustCompile(`(?:^|[^*])\*([^*\n]+)\*`)
-	reHR          = regexp.MustCompile(`^-{3,}$`)
-	reSceneBreak  = regexp.MustCompile(`^(?:\*\s*\*\s*\*|\*{3,})$`)
-	reHeading     = regexp.MustCompile(`^(#{1,3})\s+(.*)$`)
+	reMDImage     = regexp.MustCompile(`^!\[([^\]]*)\]\((?:<([^>]+)>|([^)]+))\)$`)
+	reMDImageAny  = regexp.MustCompile(`!\[([^\]]*)\]\((?:<([^>]+)>|([^)]+))\)`)
+	reHTMLAnchor  = regexp.MustCompile(`(?i)<a\b[^>]*href=["']([^"']+)["'][^>]*>(.*?)</a>`)
+	reHTMLU       = regexp.MustCompile(`(?i)<u>(.*?)</u>`)
+	reHTMLSummary = regexp.MustCompile(`(?i)<summary>(.*?)</summary>`)
+	reHTMLTagRem  = regexp.MustCompile(`(?i)</?(?:details|p|div|img)\b[^>]*>`)
+	reMDLink       = regexp.MustCompile(`\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)`)
+	reBoldItalic   = regexp.MustCompile(`\*\*\*(.+?)\*\*\*`)
+	reBold         = regexp.MustCompile(`\*\*(.+?)\*\*`)
+	reItalic       = regexp.MustCompile(`(?:^|[^*])\*([^*\n]+)\*`)
+	reItalicUnder  = regexp.MustCompile(`(^|[\s(])_([^_\n]+)_`)
+	reStraightQuot = regexp.MustCompile(`"([^"\n]+)"`)
+	reEmojiShort   = regexp.MustCompile(`:(?:coffee|shrug|smile|wink|tada|rocket|warning|bulb|memo|book):`)
+	reHR           = regexp.MustCompile(`^-{3,}$`)
+	reSceneBreak   = regexp.MustCompile(`^(?:\*\s*\*\s*\*|\*{3,})$`)
+	reHeading      = regexp.MustCompile(`^(#{1,6})\s+(.*)$`)
 	reListItem    = regexp.MustCompile(`^(\s*)([-*]|\d+\.)\s+(.*)$`)
 	reSepCell     = regexp.MustCompile(`^:?-+:?$`)
 	reDeepDive    = regexp.MustCompile(`^<(?:DeepDive|Note|Callout)(?:\s+title="([^"]*)")?\s*>(.*)</(?:DeepDive|Note|Callout)>$`)
@@ -56,9 +68,67 @@ var (
 	reInlineFence = regexp.MustCompile("```([a-zA-Z0-9_-]*)\\s+(.*?)\\s*```")
 	rePkgSymbol   = regexp.MustCompile("`([a-z][a-z0-9_]{1,14})\\.([A-Z][A-Za-z0-9_]{1,28})`")
 	reBoldTerm    = regexp.MustCompile(`(?m)^\s*[-*]\s+\*\*([A-Za-z][A-Za-z0-9 /()-]{2,34}?)(?::|\*\*\s*[—–-])`)
+	reSummaryItem = regexp.MustCompile(`^\s*[-*]\s+\[([^\]]+)\]\(([^)]+)\)`)
 )
 
+func SanitizeImageFilename(name string) string {
+	ext := strings.ToLower(filepath.Ext(name))
+	base := strings.TrimSuffix(name, filepath.Ext(name))
+	clean := regexp.MustCompile(`[^a-zA-Z0-9_-]+`).ReplaceAllString(base, "_")
+	clean = strings.Trim(clean, "_")
+	if clean == "" {
+		clean = "img"
+	}
+	return clean + ext
+}
+
 func DiscoverChapters(rootDir string, cfg *config.BookConfig) ([]ChapterDoc, error) {
+	// 1. Check for GitBook / mdBook SUMMARY.md first
+	for _, sumCand := range []string{filepath.Join(rootDir, "SUMMARY.md"), filepath.Join(rootDir, "src", "SUMMARY.md")} {
+		if sumData, err := os.ReadFile(sumCand); err == nil {
+			sumDir := filepath.Dir(sumCand)
+			var docs []ChapterDoc
+			partIdx := 0
+			chIdx := 0
+			for _, line := range strings.Split(string(sumData), "\n") {
+				trimmed := strings.TrimSpace(line)
+				if strings.HasPrefix(trimmed, "## ") {
+					partIdx++
+					continue
+				}
+				if m := reSummaryItem.FindStringSubmatch(line); len(m) == 3 {
+					linkTitle := strings.TrimSpace(m[1])
+					relPath := strings.TrimSpace(m[2])
+					if strings.EqualFold(filepath.Base(relPath), "contributing.md") || strings.EqualFold(filepath.Base(relPath), "template.md") {
+						continue
+					}
+					fp := filepath.Join(sumDir, relPath)
+					b, err := os.ReadFile(fp)
+					if err != nil {
+						continue
+					}
+					chIdx++
+					txt := string(b)
+					title := linkTitle
+					if mH1 := reH1Title.FindStringSubmatch(txt); len(mH1) > 1 {
+						title = strings.TrimSpace(mH1[1])
+					}
+					docs = append(docs, ChapterDoc{
+						IDTuple:  [3]int{partIdx, chIdx, 0},
+						HasID:    true,
+						PartIdx:  partIdx,
+						Title:    title,
+						FilePath: fp,
+						RawText:  txt,
+					})
+				}
+			}
+			if len(docs) > 0 {
+				return docs, nil
+			}
+		}
+	}
+
 	srcDir := filepath.Join(rootDir, cfg.Source)
 	if st, err := os.Stat(srcDir); err != nil || !st.IsDir() {
 		srcDir = rootDir
@@ -179,12 +249,25 @@ func FormatInline(text string, cfg *config.BookConfig) string {
 		return saveToken("$" + inner + "$")
 	})
 
+	// 1c. Normalize inline HTML tags (<a href="...">, <summary>, <u>, <details>) outside code spans
+	text = reHTMLAnchor.ReplaceAllString(text, "[$2]($1)")
+	text = reHTMLSummary.ReplaceAllString(text, "**$1**")
+	text = reHTMLTagRem.ReplaceAllString(text, "")
+	text = reMDImageAny.ReplaceAllString(text, "")
+	text = reEmojiShort.ReplaceAllString(text, "")
+
 	escSub := func(s string) string {
+		s = reStraightQuot.ReplaceAllString(s, "“$1”")
 		res := highlight.LatexEscape(s)
 		res = strings.ReplaceAll(res, "---", "—")
 		res = strings.ReplaceAll(res, "--", "–")
 		return res
 	}
+
+	text = reHTMLU.ReplaceAllStringFunc(text, func(match string) string {
+		sub := reHTMLU.FindStringSubmatch(match)
+		return saveToken(fmt.Sprintf(`\underline{%s}`, FormatInline(sub[1], cfg)))
+	})
 
 	// 2. Markdown links [label](url)
 	text = reMDLink.ReplaceAllStringFunc(text, func(match string) string {
@@ -193,9 +276,18 @@ func FormatInline(text string, cfg *config.BookConfig) string {
 			return match
 		}
 		lbl, url := strings.TrimSpace(sub[1]), strings.TrimSpace(sub[2])
+		isBoldLbl := false
+		if strings.HasPrefix(lbl, "**") && strings.HasSuffix(lbl, "**") && len(lbl) > 4 {
+			lbl = strings.TrimSpace(lbl[2 : len(lbl)-2])
+			isBoldLbl = true
+		}
+		lblTex := escSub(lbl)
+		if isBoldLbl {
+			lblTex = fmt.Sprintf(`\textbf{%s}`, lblTex)
+		}
 		if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "mailto:") {
 			safeURL := escapeHrefURL(url)
-			return saveToken(fmt.Sprintf(`\href{%s}{%s}`, safeURL, escSub(lbl)))
+			return saveToken(fmt.Sprintf(`\href{%s}{%s}`, safeURL, lblTex))
 		}
 		if cfg.RepoURL != "" && (strings.HasPrefix(url, "../") || strings.HasPrefix(url, "./") || strings.Contains(url, "/")) {
 			relPath := strings.TrimLeft(url, "./")
@@ -210,10 +302,27 @@ func FormatInline(text string, cfg *config.BookConfig) string {
 		return saveToken(fmt.Sprintf(`\textbf{%s}`, escSub(lbl)))
 	})
 
-	// 3. Bold **...** and Italic *...*
+	// 3. Bold-Italic ***...***, Bold **...**, and Italic *...* / _..._
+	text = reBoldItalic.ReplaceAllStringFunc(text, func(match string) string {
+		sub := reBoldItalic.FindStringSubmatch(match)
+		return saveToken(fmt.Sprintf(`\textbf{\textit{%s}}`, escSub(sub[1])))
+	})
 	text = reBold.ReplaceAllStringFunc(text, func(match string) string {
 		sub := reBold.FindStringSubmatch(match)
-		return saveToken(fmt.Sprintf(`\textbf{%s}`, escSub(sub[1])))
+		inner := sub[1]
+		inner = reItalic.ReplaceAllStringFunc(inner, func(im string) string {
+			isub := reItalic.FindStringSubmatch(im)
+			pref := ""
+			if !strings.HasPrefix(im, "*") {
+				pref = im[:1]
+			}
+			return pref + saveToken(fmt.Sprintf(`\textit{%s}`, escSub(isub[1])))
+		})
+		inner = reItalicUnder.ReplaceAllStringFunc(inner, func(im string) string {
+			isub := reItalicUnder.FindStringSubmatch(im)
+			return isub[1] + saveToken(fmt.Sprintf(`\textit{%s}`, escSub(isub[2])))
+		})
+		return saveToken(fmt.Sprintf(`\textbf{%s}`, escSub(inner)))
 	})
 	text = reItalic.ReplaceAllStringFunc(text, func(match string) string {
 		sub := reItalic.FindStringSubmatch(match)
@@ -222,6 +331,10 @@ func FormatInline(text string, cfg *config.BookConfig) string {
 			prefix = match[:1]
 		}
 		return prefix + saveToken(fmt.Sprintf(`\textit{%s}`, escSub(sub[1])))
+	})
+	text = reItalicUnder.ReplaceAllStringFunc(text, func(match string) string {
+		sub := reItalicUnder.FindStringSubmatch(match)
+		return sub[1] + saveToken(fmt.Sprintf(`\textit{%s}`, escSub(sub[2])))
 	})
 
 	escaped := escSub(text)
@@ -518,20 +631,26 @@ func CompileChapter(mdxText string, chNum int, cfg *config.BookConfig) (string, 
 			continue
 		}
 
-		// Standalone Image Figure ![Caption](path)
+		// Standalone Image Figure ![Caption](path) or ![Caption](<path with spaces>)
 		if m := reMDImage.FindStringSubmatch(stripped); len(m) > 0 {
-			alt, imgPath := strings.TrimSpace(m[1]), strings.TrimSpace(m[2])
-			figCounter++
-			cap := alt
-			if chNum > 0 {
-				if alt != "" {
-					cap = fmt.Sprintf("Figure %d.%d. %s", chNum, figCounter, alt)
-				} else {
-					cap = fmt.Sprintf("Figure %d.%d.", chNum, figCounter)
-				}
+			alt := strings.TrimSpace(m[1])
+			imgPath := strings.TrimSpace(m[2])
+			if imgPath == "" && len(m) > 3 {
+				imgPath = strings.TrimSpace(m[3])
 			}
-			baseImg := filepath.Base(imgPath)
-			out = append(out, tikz.WrapFigure(fmt.Sprintf(`\includegraphics[width=4.6in,height=4.8in,keepaspectratio]{%s}`, baseImg), cap))
+			resolvedName := resolveAndStageImage(imgPath, cfg.WorkDir)
+			if resolvedName != "" {
+				figCounter++
+				cap := alt
+				if chNum > 0 {
+					if alt != "" {
+						cap = fmt.Sprintf("Figure %d.%d. %s", chNum, figCounter, FormatInline(alt, cfg))
+					} else {
+						cap = fmt.Sprintf("Figure %d.%d.", chNum, figCounter)
+					}
+				}
+				out = append(out, tikz.WrapFigure(fmt.Sprintf(`\includegraphics[width=4.6in,height=4.8in,keepaspectratio]{%s}`, resolvedName), cap))
+			}
 			i++
 			continue
 		}
@@ -646,7 +765,7 @@ func CompileChapter(mdxText string, chNum int, cfg *config.BookConfig) (string, 
 				if m := reGHAlert.FindStringSubmatch(bqLines[0]); len(m) > 0 {
 					kind := strings.ToUpper(m[1])
 					rest := append([]string{m[2]}, bqLines[1:]...)
-					bodyTex := FormatInline(strings.TrimSpace(strings.Join(rest, " ")), cfg)
+					bodyTex := formatCalloutBody(strings.TrimSpace(strings.Join(rest, " ")), cfg)
 					env, col := "notebox", "noteaccent"
 					if kind == "TIP" {
 						env, col = "tipbox", "tipaccent"
@@ -669,7 +788,9 @@ func CompileChapter(mdxText string, chNum int, cfg *config.BookConfig) (string, 
 					env, col = "importantbox", "impaccent"
 				}
 				out = append(out, fmt.Sprintf(`\Needspace{4\baselineskip}\begin{%s}\sloppy\noindent{\sansbold\fontsize{8.5pt}{10.5pt}\selectfont\textcolor{%s}{%s}}\par\smallskip\noindent %s\end{%s}`,
-					env, col, FormatInline(label, cfg), FormatInline(rest, cfg), env))
+					env, col, FormatInline(label, cfg), formatCalloutBody(rest, cfg), env))
+			} else if strings.Contains(bqText, "```") {
+				out = append(out, fmt.Sprintf(`\Needspace{3\baselineskip}\begin{notebox}\sloppy\noindent %s\end{notebox}`, formatCalloutBody(bqText, cfg)))
 			} else {
 				out = append(out, fmt.Sprintf(`\begin{quote}\itshape\textcolor{diaggray}{%s}\end{quote}`, FormatInline(bqText, cfg)))
 			}
@@ -718,7 +839,11 @@ func CompileChapter(mdxText string, chNum int, cfg *config.BookConfig) (string, 
 				if it.ordered {
 					env = "enumerate"
 				}
-				targetDepth := it.indent + 1
+				effIndent := it.indent
+				if effIndent > len(envStack) {
+					effIndent = len(envStack)
+				}
+				targetDepth := effIndent + 1
 				for len(envStack) > targetDepth {
 					top := envStack[len(envStack)-1]
 					envStack = envStack[:len(envStack)-1]
@@ -806,4 +931,60 @@ func ExtractChapterIndexHits(rawText string) []IndexHit {
 	}
 
 	return hits
+}
+
+func resolveAndStageImage(imgPath string, workDir string) string {
+	if workDir == "" || imgPath == "" {
+		return ""
+	}
+	// Skip CI badges
+	if strings.Contains(imgPath, "goreportcard.com") || strings.Contains(imgPath, "shields.io") || strings.Contains(imgPath, "travis-ci") {
+		return ""
+	}
+	// Handle remote PNG/JPG URLs
+	if strings.HasPrefix(imgPath, "http://") || strings.HasPrefix(imgPath, "https://") {
+		ext := strings.ToLower(filepath.Ext(imgPath))
+		if ext != ".png" && ext != ".jpg" && ext != ".jpeg" {
+			return ""
+		}
+		san := SanitizeImageFilename(filepath.Base(imgPath))
+		dst := filepath.Join(workDir, san)
+		if st, err := os.Stat(dst); err == nil && st.Size() > 100 {
+			return san
+		}
+		client := &http.Client{Timeout: 4 * time.Second}
+		resp, err := client.Get(imgPath)
+		if err != nil {
+			return ""
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			return ""
+		}
+		data, err := io.ReadAll(resp.Body)
+		if err != nil || len(data) < 100 {
+			return ""
+		}
+		ct := http.DetectContentType(data)
+		if !strings.HasPrefix(ct, "image/png") && !strings.HasPrefix(ct, "image/jpeg") {
+			return ""
+		}
+		if err := os.WriteFile(dst, data, 0o644); err != nil {
+			return ""
+		}
+		return san
+	}
+
+	base := filepath.Base(imgPath)
+	ext := strings.ToLower(filepath.Ext(base))
+	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".pdf" {
+		return ""
+	}
+	san := SanitizeImageFilename(base)
+	for _, cand := range []string{san, base} {
+		if st, err := os.Stat(filepath.Join(workDir, cand)); err == nil && !st.IsDir() && st.Size() > 0 {
+			return cand
+		}
+	}
+	return ""
 }

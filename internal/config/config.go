@@ -36,6 +36,7 @@ type BookConfig struct {
 	LicenseText   string       `yaml:"license_text"`
 	LicenseCode   string       `yaml:"license_code"`
 	NoIndex       bool         `yaml:"no_index"`
+	WorkDir       string       `yaml:"-"`
 	Render        RenderConfig `yaml:"render"`
 	Parts         []PartMeta   `yaml:"parts"`
 }
@@ -71,13 +72,50 @@ func LoadOrDiscover(rootDir string) (*BookConfig, error) {
 		cfg.CoverImage = cfg.Render.CoverImage
 	}
 
+	// Support Pandoc title.txt metadata if present
+	titleTxtPath := filepath.Join(rootDir, "title.txt")
+	if data, err := os.ReadFile(titleTxtPath); err == nil {
+		var pMeta struct {
+			Title      string `yaml:"title"`
+			Author     string `yaml:"author"`
+			Rights     string `yaml:"rights"`
+			CoverImage string `yaml:"cover-image"`
+		}
+		cleanYML := strings.TrimSpace(string(data))
+		cleanYML = strings.TrimPrefix(cleanYML, "---")
+		cleanYML = strings.TrimSuffix(cleanYML, "...")
+		cleanYML = strings.TrimSuffix(cleanYML, "---")
+		if yaml.Unmarshal([]byte(cleanYML), &pMeta) == nil {
+			if cfg.Title == "" && pMeta.Title != "" {
+				cfg.Title = pMeta.Title
+			}
+			if cfg.Author == "" && pMeta.Author != "" {
+				cfg.Author = pMeta.Author
+			}
+			if pMeta.Rights != "" {
+				cfg.LicenseText = pMeta.Rights
+			}
+			if cfg.CoverImage == "" && pMeta.CoverImage != "" {
+				cfg.CoverImage = pMeta.CoverImage
+			}
+		}
+	}
+
 	// Auto-detect cover image if not explicitly set
 	if cfg.CoverImage == "" {
-		for _, cand := range []string{"assets/cover.jpg", "assets/cover.png", "cover.jpg", "cover.png", "docs/cover.jpg", "docs/cover.png"} {
+		for _, cand := range []string{"assets/cover.jpg", "assets/cover.png", "cover.jpg", "cover.png", "epub-cover.png", "docs/cover.jpg", "docs/cover.png"} {
 			if fileExists(filepath.Join(rootDir, cand)) {
 				cfg.CoverImage = cand
 				break
 			}
+		}
+	}
+
+	// Parse GitBook / mdBook SUMMARY.md for Part headings if present
+	for _, sumCand := range []string{filepath.Join(rootDir, "SUMMARY.md"), filepath.Join(rootDir, "src", "SUMMARY.md")} {
+		if data, err := os.ReadFile(sumCand); err == nil && len(cfg.Parts) == 0 {
+			enrichFromSummary(cfg, string(data))
+			break
 		}
 	}
 
@@ -87,7 +125,13 @@ func LoadOrDiscover(rootDir string) (*BookConfig, error) {
 		enrichFromReadme(cfg, string(data))
 	}
 
-	// Auto-detect Git remote origin URL if RepoURL is still empty
+	// Auto-detect Git remote origin URL and default branch if present
+	if headData, err := os.ReadFile(filepath.Join(rootDir, ".git", "HEAD")); err == nil {
+		headStr := strings.TrimSpace(string(headData))
+		if strings.HasPrefix(headStr, "ref: refs/heads/") {
+			cfg.DefaultBranch = strings.TrimPrefix(headStr, "ref: refs/heads/")
+		}
+	}
 	if cfg.RepoURL == "" {
 		gitCfgPath := filepath.Join(rootDir, ".git", "config")
 		if data, err := os.ReadFile(gitCfgPath); err == nil {
@@ -116,11 +160,23 @@ func LoadOrDiscover(rootDir string) (*BookConfig, error) {
 }
 
 var (
-	reH1       = regexp.MustCompile(`(?m)^#\s+(.+)$`)
-	rePartH3   = regexp.MustCompile(`(?m)^###\s+([^\n]+)\n+([^\n#<>\-1-9][^\n]+)`)
-	reBullet   = regexp.MustCompile(`(?m)^>\s*-\s+(.+)$`)
-	reGitHub   = regexp.MustCompile(`https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+`)
+	reH1        = regexp.MustCompile(`(?m)^#\s+(.+)$`)
+	reSummaryH2 = regexp.MustCompile(`(?m)^##\s+(.+)$`)
+	rePartH3    = regexp.MustCompile(`(?m)^###\s+([^\n]+)\n+([^\n#<>\-1-9][^\n]+)`)
+	reBullet    = regexp.MustCompile(`(?m)^>\s*-\s+(.+)$`)
+	reGitHub    = regexp.MustCompile(`https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+`)
 )
+
+func enrichFromSummary(cfg *BookConfig, summary string) {
+	matches := reSummaryH2.FindAllStringSubmatch(summary, -1)
+	for idx, m := range matches {
+		pTitle := strings.TrimSpace(m[1])
+		cfg.Parts = append(cfg.Parts, PartMeta{
+			Index: idx + 1,
+			Title: pTitle,
+		})
+	}
+}
 
 func enrichFromReadme(cfg *BookConfig, readme string) {
 	if m := reH1.FindStringSubmatch(readme); len(m) > 1 {

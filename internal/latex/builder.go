@@ -26,6 +26,8 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 	parts = append(parts, buildPreamble(hasProFonts))
 	parts = append(parts, `\begin{document}`)
 
+	cfg.WorkDir = workDir
+
 	// 1. Stage cover image and any referenced images from rootDir into workDir
 	if rootDir != "" && rootDir != workDir {
 		_ = filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
@@ -34,15 +36,19 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 			}
 			if d.IsDir() {
 				name := d.Name()
-				if strings.HasPrefix(name, ".") || name == "node_modules" || name == "vendor" {
+				if name == ".git" || name == ".github" || name == ".vscode" || name == ".idea" || name == "node_modules" || name == "vendor" {
 					return filepath.SkipDir
 				}
 				return nil
 			}
 			ext := strings.ToLower(filepath.Ext(d.Name()))
-			if ext == ".png" || ext == ".jpg" || ext == ".jpeg" {
+			if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".pdf" {
 				if data, rErr := os.ReadFile(path); rErr == nil {
 					_ = os.WriteFile(filepath.Join(workDir, d.Name()), data, 0o644)
+					san := markdown.SanitizeImageFilename(d.Name())
+					if san != d.Name() {
+						_ = os.WriteFile(filepath.Join(workDir, san), data, 0o644)
+					}
 				}
 			}
 			return nil

@@ -185,8 +185,20 @@ func runBuild(args []string) {
 	}
 	defer os.RemoveAll(workDir)
 
-	// 1. Handle remote GitHub URL if passed
+	// 1. Handle remote GitHub or GitBook URL if passed
 	rootDir := source
+	if strings.Contains(source, ".gitbook.io/") {
+		// Resolve https://<owner>.gitbook.io/<repo> -> https://github.com/<owner>/<repo>
+		trimmed := strings.TrimPrefix(strings.TrimPrefix(source, "https://"), "http://")
+		parts := strings.SplitN(trimmed, ".gitbook.io/", 2)
+		if len(parts) == 2 {
+			owner := parts[0]
+			slug := strings.Trim(strings.Split(parts[1], "/")[0], "/")
+			if owner != "" && slug != "" {
+				source = fmt.Sprintf("https://github.com/%s/%s", owner, slug)
+			}
+		}
+	}
 	if strings.HasPrefix(source, "https://github.com/") || strings.HasPrefix(source, "http://github.com/") || strings.HasPrefix(source, "github.com/") {
 		repoURL := source
 		if strings.HasPrefix(repoURL, "github.com/") {

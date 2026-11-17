@@ -359,6 +359,17 @@ func appendUnique(list []string, val string) []string {
 	return append(list, val)
 }
 
+// indexLess orders index terms case-insensitively, breaking ties on the exact
+// spelling. Without the tie-break, terms like "TCP" and "Tcp" compare equal
+// and their order follows Go's randomized map iteration, so two builds of the
+// same book could differ.
+func indexLess(a, b string) bool {
+	if la, lb := strings.ToLower(a), strings.ToLower(b); la != lb {
+		return la < lb
+	}
+	return a < b
+}
+
 func renderIndexSection(direct map[string][]string, subs map[string]map[string][]string) string {
 	allCatsMap := make(map[string]bool)
 	for k := range direct {
@@ -371,9 +382,7 @@ func renderIndexSection(direct map[string][]string, subs map[string]map[string][
 	for k := range allCatsMap {
 		allCats = append(allCats, k)
 	}
-	sort.Slice(allCats, func(i, j int) bool {
-		return strings.ToLower(allCats[i]) < strings.ToLower(allCats[j])
-	})
+	sort.Slice(allCats, func(i, j int) bool { return indexLess(allCats[i], allCats[j]) })
 
 	byLetter := make(map[string][]string)
 	var letters []string
@@ -433,9 +442,7 @@ func renderIndexSection(direct map[string][]string, subs map[string]map[string][
 				for sk := range sMap {
 					subKeys = append(subKeys, sk)
 				}
-				sort.Slice(subKeys, func(i, j int) bool {
-					return strings.ToLower(subKeys[i]) < strings.ToLower(subKeys[j])
-				})
+				sort.Slice(subKeys, func(i, j int) bool { return indexLess(subKeys[i], subKeys[j]) })
 				for _, sk := range subKeys {
 					sEsc := highlight.LatexEscape(sk)
 					out = append(out, fmt.Sprintf(`\noindent\hspace*{1.1em}%s, %s\par`, sEsc, fmtRefs(sMap[sk])))

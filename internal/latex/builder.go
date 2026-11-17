@@ -264,7 +264,7 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 		}
 
 		if !inMainMatter {
-			parts = append(parts, `\mainmatter`)
+			parts = append(parts, `\mainmatter`, fmt.Sprintf(`\renewcommand{\currentparttitle}{%s}`, titleEsc))
 			inMainMatter = true
 		}
 

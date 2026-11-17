@@ -647,13 +647,13 @@ var (
 
 func IsASCIIDiagram(body string) bool {
 	s := strings.TrimSpace(body)
-	if strings.Contains(s, "package ") || strings.Contains(s, "func ") || strings.Contains(s, "SELECT ") || strings.Contains(s, "FROM ") {
+	if strings.Contains(s, "package ") || strings.Contains(s, "func ") || strings.Contains(s, "SELECT ") || strings.Contains(s, "FROM ") || strings.Contains(s, "def ") || strings.Contains(s, "fn ") || strings.Contains(s, "├──") || strings.Contains(s, "└──") {
 		return false
 	}
 	if strings.Contains(s, "+---") && strings.Contains(s, "|") {
 		return true
 	}
-	if strings.Contains(s, "[") && (strings.Contains(s, "-->") || strings.Contains(s, "<--") || strings.Contains(s, "<==") || strings.Contains(s, "==>") || strings.Contains(s, "---")) {
+	if strings.Contains(s, "[") && strings.Contains(s, "]") && (strings.Contains(s, "-->") || strings.Contains(s, "<--") || strings.Contains(s, "<==") || strings.Contains(s, "==>") || strings.Contains(s, "---") || strings.Contains(s, "->") || strings.Contains(s, "\n   |") || strings.Contains(s, "\n    |")) {
 		return true
 	}
 	if strings.HasPrefix(s, "[8 bytes:") {

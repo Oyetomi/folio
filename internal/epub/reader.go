@@ -174,21 +174,25 @@ func readZipEntry(zf *zip.File) ([]byte, error) {
 }
 
 var (
-	reXHTMLBody = regexp.MustCompile(`(?is)<body[^>]*>(.*?)</body>`)
-	reXHTMLH1   = regexp.MustCompile(`(?is)<h1[^>]*>(.*?)</h1>`)
-	reXHTMLH2   = regexp.MustCompile(`(?is)<h2[^>]*>(.*?)</h2>`)
-	reXHTMLH3   = regexp.MustCompile(`(?is)<h3[^>]*>(.*?)</h3>`)
-	reXHTMLPre  = regexp.MustCompile(`(?is)<pre([^>]*)>(.*?)</pre>`)
-	reXHTMLImg  = regexp.MustCompile(`(?is)<img[^>]+src=["']([^"']+)["'][^>]*>`)
-	reXHTMLAlt  = regexp.MustCompile(`(?is)alt=["']([^"']*)["']`)
-	reLangAttr  = regexp.MustCompile(`(?is)(?:language-|lang-|brush:\s*)([a-zA-Z0-9_+-]+)`)
-	reXHTMLLI   = regexp.MustCompile(`(?is)<li[^>]*>(.*?)</li>`)
-	reXHTMLBQ   = regexp.MustCompile(`(?is)<blockquote[^>]*>(.*?)</blockquote>`)
-	reXHTMLP    = regexp.MustCompile(`(?is)<p[^>]*>(.*?)</p>`)
-	reCodeSpan  = regexp.MustCompile(`(?is)<code[^>]*>(.*?)</code>`)
-	reStrong    = regexp.MustCompile(`(?is)<(?:strong|b)[^>]*>(.*?)</(?:strong|b)>`)
-	reEm        = regexp.MustCompile(`(?is)<(?:em|i)[^>]*>(.*?)</(?:em|i)>`)
-	reAllTags   = regexp.MustCompile(`(?is)<[^>]+>`)
+	reXHTMLBody  = regexp.MustCompile(`(?is)<body[^>]*>(.*?)</body>`)
+	reXHTMLChDiv = regexp.MustCompile(`(?is)<div[^>]+class=["'][^"']*chapter[^"']*["'][^>]*>.*?</div>`)
+	reXHTMLTable = regexp.MustCompile(`(?is)<table[^>]*>(.*?)</table>`)
+	reXHTMLTR    = regexp.MustCompile(`(?is)<tr[^>]*>(.*?)</tr>`)
+	reXHTMLCell  = regexp.MustCompile(`(?is)<(?:th|td)[^>]*>(.*?)</(?:th|td)>`)
+	reXHTMLH1    = regexp.MustCompile(`(?is)<h1[^>]*>(.*?)</h1>`)
+	reXHTMLH2    = regexp.MustCompile(`(?is)<h2[^>]*>(.*?)</h2>`)
+	reXHTMLH3    = regexp.MustCompile(`(?is)<h3[^>]*>(.*?)</h3>`)
+	reXHTMLPre   = regexp.MustCompile(`(?is)<pre([^>]*)>(.*?)</pre>`)
+	reXHTMLImg   = regexp.MustCompile(`(?is)<img[^>]+src=["']([^"']+)["'][^>]*>`)
+	reXHTMLAlt   = regexp.MustCompile(`(?is)alt=["']([^"']*)["']`)
+	reLangAttr   = regexp.MustCompile(`(?is)(?:language-|lang-|brush:\s*)([a-zA-Z0-9_+-]+)`)
+	reXHTMLLI    = regexp.MustCompile(`(?is)<li[^>]*>(.*?)</li>`)
+	reXHTMLBQ    = regexp.MustCompile(`(?is)<blockquote[^>]*>(.*?)</blockquote>`)
+	reXHTMLP     = regexp.MustCompile(`(?is)<p[^>]*>(.*?)</p>`)
+	reCodeSpan   = regexp.MustCompile(`(?is)<code[^>]*>(.*?)</code>`)
+	reStrong     = regexp.MustCompile(`(?is)<(?:strong|b)[^>]*>(.*?)</(?:strong|b)>`)
+	reEm         = regexp.MustCompile(`(?is)<(?:em|i)[^>]*>(.*?)</(?:em|i)>`)
+	reAllTags    = regexp.MustCompile(`(?is)<[^>]+>`)
 )
 
 func xhtmlToMarkdown(xhtml string) (string, string) {
@@ -197,11 +201,15 @@ func xhtmlToMarkdown(xhtml string) (string, string) {
 		body = m[1]
 	}
 
+	body = reXHTMLChDiv.ReplaceAllString(body, "")
+
 	title := ""
-	if m := reXHTMLH1.FindStringSubmatch(body); len(m) > 1 {
-		title = strings.TrimSpace(stripTags(m[1]))
-	} else if m := reXHTMLH2.FindStringSubmatch(body); len(m) > 1 {
-		title = strings.TrimSpace(stripTags(m[1]))
+	if loc := reXHTMLH1.FindStringSubmatchIndex(body); len(loc) >= 4 {
+		title = strings.TrimSpace(stripTags(body[loc[2]:loc[3]]))
+		body = body[:loc[0]] + body[loc[1]:]
+	} else if loc := reXHTMLH2.FindStringSubmatchIndex(body); len(loc) >= 4 {
+		title = strings.TrimSpace(stripTags(body[loc[2]:loc[3]]))
+		body = body[:loc[0]] + body[loc[1]:]
 	}
 
 	// Convert <pre> blocks first, preserving language class if present
@@ -213,6 +221,49 @@ func xhtmlToMarkdown(xhtml string) (string, string) {
 		}
 		code := html.UnescapeString(reAllTags.ReplaceAllString(sub[2], ""))
 		return "\n\n```" + lang + "\n" + strings.TrimSpace(code) + "\n```\n\n"
+	})
+
+	// Convert <table> blocks into Markdown pipe tables
+	body = reXHTMLTable.ReplaceAllStringFunc(body, func(m string) string {
+		sub := reXHTMLTable.FindStringSubmatch(m)
+		trMatches := reXHTMLTR.FindAllStringSubmatch(sub[1], -1)
+		var rows [][]string
+		maxCols := 0
+		for _, tr := range trMatches {
+			cellMatches := reXHTMLCell.FindAllStringSubmatch(tr[1], -1)
+			if len(cellMatches) == 0 {
+				continue
+			}
+			row := make([]string, 0, len(cellMatches))
+			for _, cm := range cellMatches {
+				val := strings.ReplaceAll(cleanInlineHTML(cm[1]), "|", `\|`)
+				row = append(row, val)
+			}
+			if len(row) > maxCols {
+				maxCols = len(row)
+			}
+			rows = append(rows, row)
+		}
+		if len(rows) == 0 || maxCols == 0 {
+			return ""
+		}
+		var sb strings.Builder
+		sb.WriteString("\n\n")
+		for rIdx, row := range rows {
+			for len(row) < maxCols {
+				row = append(row, "")
+			}
+			sb.WriteString("| " + strings.Join(row, " | ") + " |\n")
+			if rIdx == 0 {
+				seps := make([]string, maxCols)
+				for i := range seps {
+					seps[i] = "---"
+				}
+				sb.WriteString("| " + strings.Join(seps, " | ") + " |\n")
+			}
+		}
+		sb.WriteString("\n")
+		return sb.String()
 	})
 
 	// Convert <img> elements to Markdown image syntax

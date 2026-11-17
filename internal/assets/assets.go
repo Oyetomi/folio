@@ -36,44 +36,48 @@ func StageFonts(workDir string, customFontsDir string) (bool, error) {
 		}
 	}
 
-	// Candidate directories for local custom OpenType fonts
-	var candidates []string
-	if customFontsDir != "" {
-		candidates = append(candidates, customFontsDir)
+	// Copy local Minion Pro / Myriad Pro (and any other local faces) next to
+	// the embedded ones; only used when the build asks for fonts: pro.
+	dir, ok := FindProFonts(customFontsDir)
+	if !ok {
+		return false, nil
 	}
-	if envDir := os.Getenv("FOLIO_FONTS_DIR"); envDir != "" {
-		candidates = append(candidates, envDir)
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return false, nil
 	}
-	if home, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates, filepath.Join(home, ".folio", "fonts"))
-	}
-
-	for _, dir := range candidates {
-		minionPath := filepath.Join(dir, "MinionPro-Regular.otf")
-		myriadPath := filepath.Join(dir, "MyriadPro-Regular.otf")
-		if fileExists(minionPath) && fileExists(myriadPath) {
-			files, err := os.ReadDir(dir)
-			if err == nil {
-				for _, f := range files {
-					if f.IsDir() {
-						continue
-					}
-					ext := filepath.Ext(f.Name())
-					if ext == ".otf" || ext == ".ttf" {
-						if data, err := os.ReadFile(filepath.Join(dir, f.Name())); err == nil {
-							_ = os.WriteFile(filepath.Join(destDir, f.Name()), data, 0o644)
-						}
-					}
-				}
-				return true, nil
+	for _, f := range files {
+		if ext := filepath.Ext(f.Name()); !f.IsDir() && (ext == ".otf" || ext == ".ttf") {
+			if data, err := os.ReadFile(filepath.Join(dir, f.Name())); err == nil {
+				_ = os.WriteFile(filepath.Join(destDir, f.Name()), data, 0o644)
 			}
 		}
 	}
+	return true, nil
+}
 
-	return false, nil
+// FindProFonts returns the first font directory (custom dir, $FOLIO_FONTS_DIR,
+// ~/.folio/fonts) that holds Minion Pro and Myriad Pro.
+func FindProFonts(customFontsDir string) (string, bool) {
+	for _, dir := range userFontDirs(customFontsDir) {
+		if fileExists(filepath.Join(dir, "MinionPro-Regular.otf")) && fileExists(filepath.Join(dir, "MyriadPro-Regular.otf")) {
+			return dir, true
+		}
+	}
+	return "", false
 }
 
 func fileExists(p string) bool {
 	st, err := os.Stat(p)
 	return err == nil && !st.IsDir()
+}
+
+// Fonts returns the embedded open-source font files (UbuntuMono *.otf), e.g.
+// for serving to the web UI so it matches the typeset PDF.
+func Fonts() fs.FS {
+	sub, err := fs.Sub(embeddedFonts, "fonts")
+	if err != nil {
+		panic(err) // the directory is embedded at compile time
+	}
+	return sub
 }

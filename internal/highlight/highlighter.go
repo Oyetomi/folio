@@ -10,6 +10,198 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 )
 
+var unicodeMathMap = map[rune]string{
+	'→': `\ensuremath{\rightarrow}`,
+	'←': `\ensuremath{\leftarrow}`,
+	'↑': `\ensuremath{\uparrow}`,
+	'↓': `\ensuremath{\downarrow}`,
+	'↔': `\ensuremath{\leftrightarrow}`,
+	'⇒': `\ensuremath{\Rightarrow}`,
+	'⇐': `\ensuremath{\Leftarrow}`,
+	'⇔': `\ensuremath{\Leftrightarrow}`,
+	'↦': `\ensuremath{\mapsto}`,
+	'𝛼': `\ensuremath{\alpha}`,
+	'𝛽': `\ensuremath{\beta}`,
+	'𝛾': `\ensuremath{\gamma}`,
+	'𝛿': `\ensuremath{\delta}`,
+	'𝜖': `\ensuremath{\epsilon}`,
+	'𝜂': `\ensuremath{\eta}`,
+	'𝜃': `\ensuremath{\theta}`,
+	'𝜆': `\ensuremath{\lambda}`,
+	'𝜇': `\ensuremath{\mu}`,
+	'𝜋': `\ensuremath{\pi}`,
+	'𝜌': `\ensuremath{\rho}`,
+	'𝜎': `\ensuremath{\sigma}`,
+	'𝜏': `\ensuremath{\tau}`,
+	'𝜙': `\ensuremath{\phi}`,
+	'𝜔': `\ensuremath{\omega}`,
+	'ϕ': `\ensuremath{\phi}`,
+	'φ': `\ensuremath{\varphi}`,
+	'α': `\ensuremath{\alpha}`,
+	'β': `\ensuremath{\beta}`,
+	'γ': `\ensuremath{\gamma}`,
+	'δ': `\ensuremath{\delta}`,
+	'ε': `\ensuremath{\epsilon}`,
+	'ζ': `\ensuremath{\zeta}`,
+	'η': `\ensuremath{\eta}`,
+	'θ': `\ensuremath{\theta}`,
+	'κ': `\ensuremath{\kappa}`,
+	'λ': `\ensuremath{\lambda}`,
+	'μ': `\ensuremath{\mu}`,
+	'ν': `\ensuremath{\nu}`,
+	'ξ': `\ensuremath{\xi}`,
+	'π': `\ensuremath{\pi}`,
+	'ρ': `\ensuremath{\rho}`,
+	'σ': `\ensuremath{\sigma}`,
+	'τ': `\ensuremath{\tau}`,
+	'χ': `\ensuremath{\chi}`,
+	'ψ': `\ensuremath{\psi}`,
+	'ω': `\ensuremath{\omega}`,
+	'Γ': `\ensuremath{\Gamma}`,
+	'Δ': `\ensuremath{\Delta}`,
+	'Θ': `\ensuremath{\Theta}`,
+	'Λ': `\ensuremath{\Lambda}`,
+	'Σ': `\ensuremath{\Sigma}`,
+	'Φ': `\ensuremath{\Phi}`,
+	'Ψ': `\ensuremath{\Psi}`,
+	'Ω': `\ensuremath{\Omega}`,
+	'ℂ': `\ensuremath{\mathbb{C}}`,
+	'ℝ': `\ensuremath{\mathbb{R}}`,
+	'ℤ': `\ensuremath{\mathbb{Z}}`,
+	'ℕ': `\ensuremath{\mathbb{N}}`,
+	'ℚ': `\ensuremath{\mathbb{Q}}`,
+	'∈': `\ensuremath{\in}`,
+	'∉': `\ensuremath{\notin}`,
+	'⊂': `\ensuremath{\subset}`,
+	'⊆': `\ensuremath{\subseteq}`,
+	'⊈': `\ensuremath{\nsubseteq}`,
+	'⊊': `\ensuremath{\subsetneq}`,
+	'⊃': `\ensuremath{\supset}`,
+	'⊇': `\ensuremath{\supseteq}`,
+	'⊉': `\ensuremath{\nsupseteq}`,
+	'⊋': `\ensuremath{\supsetneq}`,
+	'∀': `\ensuremath{\forall}`,
+	'∃': `\ensuremath{\exists}`,
+	'¬': `\ensuremath{\neg}`,
+	'∧': `\ensuremath{\wedge}`,
+	'∨': `\ensuremath{\vee}`,
+	'⊤': `\ensuremath{\top}`,
+	'⊥': `\ensuremath{\perp}`,
+	'∪': `\ensuremath{\cup}`,
+	'∩': `\ensuremath{\cap}`,
+	'∅': `\ensuremath{\emptyset}`,
+	'∑': `\ensuremath{\sum}`,
+	'∏': `\ensuremath{\prod}`,
+	'∫': `\ensuremath{\int}`,
+	'√': `\ensuremath{\sqrt{}}`,
+	'∞': `\ensuremath{\infty}`,
+	'≤': `\ensuremath{\le}`,
+	'≥': `\ensuremath{\ge}`,
+	'≠': `\ensuremath{\neq}`,
+	'≈': `\ensuremath{\approx}`,
+	'∼': `\ensuremath{\sim}`,
+	'≅': `\ensuremath{\cong}`,
+	'≡': `\ensuremath{\equiv}`,
+	'±': `\ensuremath{\pm}`,
+	'×': `\ensuremath{\times}`,
+	'÷': `\ensuremath{\div}`,
+	'∂': `\ensuremath{\partial}`,
+	'∇': `\ensuremath{\nabla}`,
+	'·': `\ensuremath{\cdot}`,
+	'ℓ': `\ensuremath{\ell}`,
+	'ℒ': `\ensuremath{\mathcal{L}}`,
+	'ℛ': `\ensuremath{\mathcal{R}}`,
+	'ℰ': `\ensuremath{\mathcal{E}}`,
+	'ℱ': `\ensuremath{\mathcal{F}}`,
+	'ℋ': `\ensuremath{\mathcal{H}}`,
+	'ℬ': `\ensuremath{\mathcal{B}}`,
+	'ℳ': `\ensuremath{\mathcal{M}}`,
+	'′': `\ensuremath{^\prime}`,
+	'″': `\ensuremath{^{\prime\prime}}`,
+	'ϵ': `\ensuremath{\epsilon}`,
+	'ϑ': `\ensuremath{\vartheta}`,
+	'‖': `\ensuremath{\|}`,
+	'⟨': `\ensuremath{\langle}`,
+	'⟩': `\ensuremath{\rangle}`,
+	'〈': `\ensuremath{\langle}`,
+	'〉': `\ensuremath{\rangle}`,
+	'⊕': `\ensuremath{\oplus}`,
+	'∘': `\ensuremath{\circ}`,
+	'∗': `*`,
+	'−': `-`,
+	'∕': `/`,
+	'⋯': `\ensuremath{\cdots}`,
+	'⋮': `\ensuremath{\vdots}`,
+	'⋱': `\ensuremath{\ddots}`,
+	'△': `\ensuremath{\triangle}`,
+	'ɛ': `\ensuremath{\varepsilon}`,
+	'∓': `\ensuremath{\mp}`,
+	'⊙': `\ensuremath{\odot}`,
+	'⊗': `\ensuremath{\otimes}`,
+	'⊖': `\ensuremath{\ominus}`,
+	'□': `\ensuremath{\square}`,
+	'■': `\ensuremath{\blacksquare}`,
+	'⁻': `\ensuremath{{^{-}}}`,
+	'⁺': `\ensuremath{{^{+}}}`,
+	'⁰': `\ensuremath{{^{0}}}`,
+	'¹': `\ensuremath{{^{1}}}`,
+	'²': `\ensuremath{{^{2}}}`,
+	'³': `\ensuremath{{^{3}}}`,
+	'⁴': `\ensuremath{{^{4}}}`,
+	'⁵': `\ensuremath{{^{5}}}`,
+	'⁶': `\ensuremath{{^{6}}}`,
+	'⁷': `\ensuremath{{^{7}}}`,
+	'⁸': `\ensuremath{{^{8}}}`,
+	'⁹': `\ensuremath{{^{9}}}`,
+	'ₐ': `\ensuremath{{_{a}}}`,
+	'ₑ': `\ensuremath{{_{e}}}`,
+	'ᵢ': `\ensuremath{{_{i}}}`,
+	'ⱼ': `\ensuremath{{_{j}}}`,
+	'ₖ': `\ensuremath{{_{k}}}`,
+	'ₘ': `\ensuremath{{_{m}}}`,
+	'ₙ': `\ensuremath{{_{n}}}`,
+	'ₒ': `\ensuremath{{_{o}}}`,
+	'ₚ': `\ensuremath{{_{p}}}`,
+	'ᵣ': `\ensuremath{{_{r}}}`,
+	'ₛ': `\ensuremath{{_{s}}}`,
+	'ₜ': `\ensuremath{{_{t}}}`,
+	'ₓ': `\ensuremath{{_{x}}}`,
+}
+
+// NormalizeMathUnicode converts raw Unicode Greek and math symbols inside $...$ or \[...\]
+// into standard LaTeX math commands so legacy TeX math fonts never report missing glyphs.
+func NormalizeMathUnicode(s string) string {
+	runes := []rune(s)
+	var b strings.Builder
+	b.Grow(len(s) + 16)
+	for i, ch := range runes {
+		if tex, ok := unicodeMathMap[ch]; ok {
+			inner := strings.TrimPrefix(tex, `\ensuremath{`)
+			inner = strings.TrimSuffix(inner, `}`)
+			if i > 0 && runes[i-1] == '^' && strings.HasPrefix(inner, `^`) {
+				inner = strings.TrimPrefix(inner, `^`)
+			}
+			b.WriteString(inner)
+			if strings.Contains(inner, `\`) && i+1 < len(runes) {
+				nxt := runes[i+1]
+				if (nxt >= 'a' && nxt <= 'z') || (nxt >= 'A' && nxt <= 'Z') {
+					b.WriteByte(' ')
+				}
+			}
+		} else if !isUnsupportedGlyph(ch) {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
+}
+
+func isUnsupportedGlyph(r rune) bool {
+	if r > 0 && r < 0x20 && r != '\n' && r != '\r' && r != '\t' {
+		return true
+	}
+	return r == 0xFFFD || r == 0xFEFF || r == 0x2060 || (r >= 0x7F && r <= 0x9F) || (r >= 0x0300 && r <= 0x036F) || (r >= 0x0590 && r <= 0x06FF) || (r >= 0x2600 && r <= 0x27BF) || (r >= 0xE000 && r <= 0xF8FF) || (r >= 0xFE00 && r <= 0xFE0F) || r >= 0x1F000
+}
+
 func LatexEscape(text string) string {
 	var b strings.Builder
 	b.Grow(len(text) + 16)
@@ -39,17 +231,12 @@ func LatexEscape(text string) string {
 			b.WriteString(`\textless{}`)
 		case '>':
 			b.WriteString(`\textgreater{}`)
-		case '→':
-			b.WriteString(`$\rightarrow$`)
-		case '←':
-			b.WriteString(`$\leftarrow$`)
-		case '↔':
-			b.WriteString(`$\leftrightarrow$`)
 		default:
-			if (ch >= 0x2600 && ch <= 0x27BF) || (ch >= 0xFE00 && ch <= 0xFE0F) || ch >= 0x1F000 {
-				continue
+			if tex, ok := unicodeMathMap[ch]; ok {
+				b.WriteString(tex)
+			} else if !isUnsupportedGlyph(ch) {
+				b.WriteRune(ch)
 			}
-			b.WriteRune(ch)
 		}
 	}
 	return b.String()
@@ -91,7 +278,11 @@ func CodeEscapeInline(text string) string {
 		case '"':
 			b.WriteString(`\textquotedbl{}`)
 		default:
-			b.WriteRune(ch)
+			if tex, ok := unicodeMathMap[ch]; ok {
+				b.WriteString(tex)
+			} else if !isUnsupportedGlyph(ch) {
+				b.WriteRune(ch)
+			}
 		}
 	}
 	return b.String()
@@ -109,7 +300,11 @@ func VerbEscape(s string) string {
 		case '}':
 			b.WriteString(`\}`)
 		default:
-			b.WriteRune(ch)
+			if tex, ok := unicodeMathMap[ch]; ok {
+				b.WriteString(tex)
+			} else if !isUnsupportedGlyph(ch) {
+				b.WriteRune(ch)
+			}
 		}
 	}
 	return b.String()
@@ -134,6 +329,27 @@ func isPascalIdentifier(s string) bool {
 	return hasLower
 }
 
+// styled applies a LaTeX colour/weight wrapper to a token. Verbatim lines can
+// only break outside macro arguments, so a long token (a string literal, a
+// comment) is wrapped in several short groups to give fvextra break points.
+// The printed result is identical.
+func styled(format, val string) string {
+	const longToken, piece = 24, 12
+	rs := []rune(val)
+	if len(rs) <= longToken {
+		return fmt.Sprintf(format, VerbEscape(val))
+	}
+	var b strings.Builder
+	for i := 0; i < len(rs); i += piece {
+		j := i + piece
+		if j > len(rs) {
+			j = len(rs)
+		}
+		b.WriteString(fmt.Sprintf(format, VerbEscape(string(rs[i:j]))))
+	}
+	return b.String()
+}
+
 func styleToken(tt chroma.TokenType, val string, nextNonWS string) string {
 	if val == "" {
 		return ""
@@ -141,25 +357,25 @@ func styleToken(tt chroma.TokenType, val string, nextNonWS string) string {
 	esc := VerbEscape(val)
 	switch {
 	case tt == chroma.Comment || tt.InCategory(chroma.Comment):
-		return fmt.Sprintf(`\textit{\textcolor{cmcol}{%s}}`, esc)
+		return styled(`\textit{\textcolor{cmcol}{%s}}`, val)
 	case tt == chroma.KeywordType || tt == chroma.KeywordConstant || tt == chroma.NameBuiltinPseudo || tt == chroma.NameClass || tt == chroma.NameException:
-		return fmt.Sprintf(`\textcolor{typecol}{%s}`, esc)
+		return styled(`\textcolor{typecol}{%s}`, val)
 	case tt == chroma.Keyword || tt.InCategory(chroma.Keyword) || tt == chroma.OperatorWord:
-		return fmt.Sprintf(`\textbf{\textcolor{kwcol}{%s}}`, esc)
+		return styled(`\textbf{\textcolor{kwcol}{%s}}`, val)
 	case tt == chroma.NameTag:
-		return fmt.Sprintf(`\textbf{\textcolor{kwcol}{%s}}`, esc)
+		return styled(`\textbf{\textcolor{kwcol}{%s}}`, val)
 	case tt == chroma.NameBuiltin || tt == chroma.NameFunction || tt == chroma.NameFunctionMagic || tt == chroma.NameNamespace || tt == chroma.NameDecorator || tt == chroma.NameAttribute:
-		return fmt.Sprintf(`\textcolor{fncol}{%s}`, esc)
+		return styled(`\textcolor{fncol}{%s}`, val)
 	case tt.InSubCategory(chroma.LiteralString):
-		return fmt.Sprintf(`\textcolor{strcol}{%s}`, esc)
+		return styled(`\textcolor{strcol}{%s}`, val)
 	case tt.InSubCategory(chroma.LiteralNumber):
-		return fmt.Sprintf(`\textcolor{numcol}{%s}`, esc)
+		return styled(`\textcolor{numcol}{%s}`, val)
 	case tt == chroma.NameOther || tt == chroma.Name:
 		if strings.HasPrefix(nextNonWS, "(") {
-			return fmt.Sprintf(`\textcolor{fncol}{%s}`, esc)
+			return styled(`\textcolor{fncol}{%s}`, val)
 		}
 		if isPascalIdentifier(val) {
-			return fmt.Sprintf(`\textcolor{typecol}{%s}`, esc)
+			return styled(`\textcolor{typecol}{%s}`, val)
 		}
 		return esc
 	default:
@@ -416,8 +632,14 @@ func highlightShellArgs(s string) string {
 // any programming, markup, query, shell, or configuration snippet into LaTeX Verbatim.
 func HighlightBlock(lang string, codeText string) string {
 	lang = strings.TrimSpace(lang)
+	if idx := strings.IndexByte(lang, ','); idx >= 0 {
+		lang = strings.TrimSpace(lang[:idx])
+	}
+	if fields := strings.Fields(lang); len(fields) > 0 {
+		lang = fields[0]
+	}
 	expanded := strings.ReplaceAll(codeText, "\t", "    ")
-	trimmed := strings.TrimRight(expanded, "\n")
+	trimmed := wrapUltraLongCodeRuns(strings.TrimRight(expanded, "\n"), 120)
 
 	if lang == "" || strings.EqualFold(lang, "text") || strings.EqualFold(lang, "plaintext") {
 		inferred := inferLanguage(trimmed)
@@ -473,4 +695,57 @@ func HighlightBlock(lang string, codeText string) string {
 	}
 	out.WriteString("\n\\end{Verbatim}\n")
 	return out.String()
+}
+
+// wrapUltraLongCodeRuns breaks unbroken non-whitespace runs (> limit chars, e.g. base64) to avoid TeX Dimension too large.
+func wrapUltraLongCodeRuns(s string, limit int) string {
+	lines := strings.Split(s, "\n")
+	changed := false
+	for idx, ln := range lines {
+		if len(ln) <= limit*2 {
+			continue
+		}
+		var out strings.Builder
+		runLen := 0
+		for _, r := range ln {
+			out.WriteRune(r)
+			if r == ' ' {
+				runLen = 0
+			} else {
+				runLen++
+				if runLen >= limit {
+					out.WriteByte('\n')
+					runLen = 0
+					changed = true
+				}
+			}
+		}
+		lines[idx] = out.String()
+	}
+	if !changed {
+		return s
+	}
+	return strings.Join(lines, "\n")
+}
+
+// DroppedRunes returns the distinct visible characters in text that the
+// escapers strip because no bundled font can set them (RTL scripts, emoji,
+// dingbats, private-use glyphs, combining accents). Invisible formatting
+// characters (BOM, variation selectors, controls) are not reported.
+func DroppedRunes(text string) []rune {
+	seen := map[rune]bool{}
+	var out []rune
+	for _, r := range text {
+		if !isUnsupportedGlyph(r) || seen[r] {
+			continue
+		}
+		switch {
+		case r < 0x20, r >= 0x7F && r <= 0x9F, r == 0xFEFF, r == 0x2060, r == 0xFFFD,
+			r >= 0xFE00 && r <= 0xFE0F, r >= 0x1F3FB && r <= 0x1F3FF, r >= 0xE0000:
+			continue // invisible or modifier-only
+		}
+		seen[r] = true
+		out = append(out, r)
+	}
+	return out
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -17,43 +18,25 @@ type BuildStats struct {
 	Chapters int
 	Figures  int
 	TexBytes int
+	Notes    []string // fallback-font decisions and warnings, for the build log
 }
 
-func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, docs []markdown.ChapterDoc, hasProFonts bool) (string, BuildStats, error) {
+func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, docs []markdown.ChapterDoc, fonts FontMode) (string, BuildStats, error) {
 	var stats BuildStats
 	var parts []string
 
-	parts = append(parts, buildPreamble(hasProFonts))
+	parts = append(parts, buildPreamble(fonts))
 	parts = append(parts, `\begin{document}`)
 
 	cfg.WorkDir = workDir
 
-	// 1. Stage cover image and any referenced images from rootDir into workDir
-	if rootDir != "" && rootDir != workDir {
-		_ = filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if d.IsDir() {
-				name := d.Name()
-				if name == ".git" || name == ".github" || name == ".vscode" || name == ".idea" || name == "node_modules" || name == "vendor" {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			ext := strings.ToLower(filepath.Ext(d.Name()))
-			if ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".pdf" {
-				if data, rErr := os.ReadFile(path); rErr == nil {
-					_ = os.WriteFile(filepath.Join(workDir, d.Name()), data, 0o644)
-					san := markdown.SanitizeImageFilename(d.Name())
-					if san != d.Name() {
-						_ = os.WriteFile(filepath.Join(workDir, san), data, 0o644)
-					}
-				}
-			}
-			return nil
-		})
+	// Chapter images are resolved and staged lazily, relative to the chapter
+	// that references them (see markdown.resolveAndStageImage).
+	cfg.RootDir = rootDir
+	if rootDir == workDir {
+		cfg.RootDir = ""
 	}
+
 	coverFile := ""
 	if cfg.CoverImage != "" {
 		cand := cfg.CoverImage
@@ -228,11 +211,14 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 	inMainMatter := false
 	currentPart := -1
 	chCounter := 0
-	romanNumerals := []string{"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}
+	romanNumerals := []string{"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"}
 
 	for _, doc := range docs {
-		if doc.PartIdx == 0 {
-			bodyTex, fCnt := markdown.CompileChapter(doc.RawText, 0, cfg)
+		for imgName, imgBytes := range doc.InlineImages {
+			_ = os.WriteFile(filepath.Join(workDir, imgName), imgBytes, 0o644)
+		}
+		if doc.PartIdx == 0 && !inMainMatter {
+			bodyTex, fCnt := markdown.CompileChapterFile(doc.RawText, 0, cfg, doc.FilePath)
 			stats.Figures += fCnt
 			tEsc := markdown.FormatInline(doc.Title, cfg)
 			parts = append(parts, fmt.Sprintf(`
@@ -250,8 +236,8 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 			continue
 		}
 
-		if doc.PartIdx >= 7 {
-			bodyTex, fCnt := markdown.CompileChapter(doc.RawText, 0, cfg)
+		if doc.PartIdx >= 999 {
+			bodyTex, fCnt := markdown.CompileChapterFile(doc.RawText, 0, cfg, doc.FilePath)
 			stats.Figures += fCnt
 			tEsc := markdown.FormatInline(doc.Title, cfg)
 			parts = append(parts, fmt.Sprintf(`
@@ -284,14 +270,24 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 			if !ok {
 				pm = config.PartMeta{Title: fmt.Sprintf("Part %s", pRoman)}
 			}
-			pTitleEsc := markdown.FormatInline(pm.Title, cfg)
+			// The builder supplies the "Part <roman>" label itself, so drop it
+			// from titles written as "Part I: Foundations" (or the bare
+			// fallback "Part I") to avoid "Part I: Part I: Foundations".
+			shortTitle := strings.TrimSpace(rePartPrefix.ReplaceAllString(pm.Title, ""))
+			pTitleEsc := markdown.FormatInline(shortTitle, cfg)
 			pDescEsc := markdown.FormatInline(pm.Description, cfg)
+			footTitle, tocTitle, headTitle := "Part "+pRoman, "Part "+pRoman+".", "Part "+pRoman
+			if pTitleEsc != "" {
+				footTitle += ": " + pTitleEsc
+				tocTitle += " " + pTitleEsc
+				headTitle = pTitleEsc
+			}
 			parts = append(parts, fmt.Sprintf(`
 \clearpage
 \thispagestyle{empty}
 \phantomsection
-\renewcommand{\currentparttitle}{Part %s: %s}
-\addcontentsline{toc}{part}{Part %s. %s}
+\renewcommand{\currentparttitle}{%s}
+\addcontentsline{toc}{part}{%s}
 \vspace*{1.1in}
 {\sanscond\fontsize{14pt}{18pt}\selectfont\textcolor{brandcrimson}{PART %s}\par}
 \vspace{6pt}
@@ -301,12 +297,12 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 \vspace{14pt}
 {\fontsize{10.8pt}{15pt}\selectfont\textcolor{diaggray}{%s}\par}
 \clearpage
-`, pRoman, pTitleEsc, pRoman, pTitleEsc, pRoman, pTitleEsc, pDescEsc))
+`, footTitle, tocTitle, pRoman, headTitle, pDescEsc))
 		}
 
 		chCounter++
 		chLabel := fmt.Sprintf("ch:%d", chCounter)
-		bodyTex, fCnt := markdown.CompileChapter(doc.RawText, chCounter, cfg)
+		bodyTex, fCnt := markdown.CompileChapterFile(doc.RawText, chCounter, cfg, doc.FilePath)
 		stats.Figures += fCnt
 		tEsc := markdown.FormatInline(doc.Title, cfg)
 
@@ -346,10 +342,13 @@ func BuildTexDocument(rootDir string, workDir string, cfg *config.BookConfig, do
 
 	parts = append(parts, `\end{document}`)
 	fullTex := strings.Join(parts, "\n")
+	fullTex, stats.Notes = applyScriptFallback(fullTex, workDir, cfg.FontsDir)
 	stats.Chapters = chCounter
 	stats.TexBytes = len(fullTex)
 	return fullTex, stats, nil
 }
+
+var rePartPrefix = regexp.MustCompile(`(?i)^\s*part\s+(?:[ivxlcdm]+|\d+)\b\s*[.:\x{2014}\x{2013}-]?\s*`)
 
 func appendUnique(list []string, val string) []string {
 	for _, v := range list {
@@ -449,8 +448,90 @@ func renderIndexSection(direct map[string][]string, subs map[string]map[string][
 	return strings.Join(out, "\n")
 }
 
-func buildPreamble(hasProFonts bool) string {
-	fontSetup := `
+// FontMode selects the typefaces used for the book.
+type FontMode string
+
+const (
+	// FontsOpen uses free OFL fonts shipped in Tectonic's TeX bundle, so the
+	// same source produces the same PDF on any machine, including CI.
+	FontsOpen FontMode = "open"
+	// FontsPro uses Adobe Minion Pro and Myriad Pro from a local font
+	// directory. They are commercial and cannot be used in public CI.
+	FontsPro FontMode = "pro"
+	// FontsMono sets everything in the embedded Ubuntu Mono.
+	FontsMono FontMode = "mono"
+)
+
+// ParseFontMode validates a user-supplied mode; empty means FontsOpen.
+func ParseFontMode(s string) (FontMode, error) {
+	switch m := FontMode(strings.ToLower(strings.TrimSpace(s))); m {
+	case "":
+		return FontsOpen, nil
+	case FontsOpen, FontsPro, FontsMono:
+		return m, nil
+	}
+	return "", fmt.Errorf("unknown fonts setting %q (use open, pro or mono)", s)
+}
+
+// Ubuntu Mono is embedded in the binary and staged into fonts/ for every
+// build; it is the code face in all modes.
+const monoCodeFont = `
+\setmonofont[
+  Path=fonts/,
+  UprightFont=UbuntuMono-Regular.otf,
+  ItalicFont=UbuntuMono-Italic.otf,
+  BoldFont=UbuntuMono-Bold.otf,
+  BoldItalicFont=UbuntuMono-BoldItalic.otf,
+  Scale=0.88
+]{UbuntuMono}
+`
+
+// Crimson Pro (body, an old-style serif in the spirit of Minion), Source
+// Sans Pro (headings, a humanist sans in the spirit of Myriad) and IBM Plex
+// Sans Condensed (running heads and labels). All SIL Open Font License, all
+// resolved from Tectonic's bundle by file name.
+const openFonts = `
+\setmainfont{CrimsonPro}[
+  Extension=.ttf,
+  UprightFont=*-Regular,
+  ItalicFont=*-Italic,
+  BoldFont=*-SemiBold,
+  BoldItalicFont=*-SemiBoldItalic,
+  Ligatures=TeX,
+  Scale=1.06
+]
+\setsansfont{SourceSansPro}[
+  Extension=.otf,
+  UprightFont=*-Regular,
+  ItalicFont=*-RegularIt,
+  BoldFont=*-Semibold,
+  BoldItalicFont=*-SemiboldIt,
+  Ligatures=TeX
+]
+\newfontfamily\sanscond{IBMPlexSansCondensed}[
+  Extension=.otf,
+  UprightFont=*-Regular,
+  ItalicFont=*-Italic,
+  BoldFont=*-SemiBold,
+  BoldItalicFont=*-SemiBoldItalic,
+  Ligatures=TeX
+]
+\newfontfamily\sanssemiboldcond{IBMPlexSansCondensed}[
+  Extension=.otf,
+  UprightFont=*-SemiBold,
+  ItalicFont=*-SemiBoldItalic,
+  BoldFont=*-Bold,
+  Ligatures=TeX
+]
+\newfontfamily\sansbold{SourceSansPro}[
+  Extension=.otf,
+  UprightFont=*-Bold,
+  BoldFont=*-Bold,
+  Ligatures=TeX
+]
+` + monoCodeFont
+
+const monoFonts = `
 \setmainfont[
   Path=fonts/,
   UprightFont=UbuntuMono-Regular.otf,
@@ -477,8 +558,8 @@ func buildPreamble(hasProFonts bool) string {
   Scale=0.88
 ]{UbuntuMono}
 `
-	if hasProFonts {
-		fontSetup = `
+
+const proFonts = `
 \setmainfont[
   Path=fonts/,
   UprightFont=MinionPro-Regular.otf,
@@ -529,11 +610,32 @@ func buildPreamble(hasProFonts bool) string {
   Scale=0.88
 ]{UbuntuMono}
 `
+
+func buildPreamble(mode FontMode) string {
+	var fontSetup string
+	switch mode {
+	case FontsPro:
+		fontSetup = proFonts
+	case FontsMono:
+		fontSetup = monoFonts
+	default:
+		fontSetup = openFonts
 	}
 
 	return `\documentclass[10pt,twoside,openany]{book}
 \usepackage[paperwidth=7in,paperheight=9.1875in,top=0.80in,bottom=0.88in,inner=0.88in,outer=0.76in,footskip=0.38in]{geometry}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath,amssymb,mathrsfs}
+\setcounter{MaxMatrixCols}{30}
+\providecommand{\EE}{\mathbb{E}}
+\providecommand{\PP}{\mathbb{P}}
+\providecommand{\VV}{\mathbb{V}}
+\providecommand{\RR}{\mathbb{R}}
+\providecommand{\NN}{\mathbb{N}}
+\providecommand{\ZZ}{\mathbb{Z}}
+\providecommand{\CC}{\mathbb{C}}
+\providecommand{\QQ}{\mathbb{Q}}
+\providecommand{\argmax}{\operatorname*{arg\,max}}
+\providecommand{\argmin}{\operatorname*{arg\,min}}
 \usepackage{fontspec}
 \usepackage[protrusion=true,expansion=false]{microtype}
 \usepackage{xcolor}
@@ -596,6 +698,7 @@ func buildPreamble(hasProFonts bool) string {
   fontsize=\fontsize{8.1pt}{10.2pt}\selectfont,
   breaklines=true,
   breakanywhere=true,
+  breakanywheresymbolpre={},
   breaksymbolright=\codewrapmark,
   xleftmargin=6pt,
   xrightmargin=4pt,

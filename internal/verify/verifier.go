@@ -44,7 +44,31 @@ var (
 	reFigNum   = regexp.MustCompile(`^(?:\d+|[A-Z])\.\d+\.$`)
 	reDoctype  = regexp.MustCompile(`<!DOCTYPE[^>]*>`)
 	reOverfull = regexp.MustCompile(`Overfull \\hbox \(([0-9.]+)pt too wide\)`)
+	reMissing  = regexp.MustCompile(`Missing character: There is no .*?\(U\+([0-9A-Fa-f]{4,6})\)`)
 )
+
+// MissingGlyphs lists the distinct characters XeTeX could not find in any
+// font, from the TeX log. XeTeX drops these silently, so text can vanish
+// from the PDF without the build failing.
+func MissingGlyphs(logPath string) []rune {
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil
+	}
+	seen := map[rune]bool{}
+	var out []rune
+	for _, m := range reMissing.FindAllStringSubmatch(string(data), -1) {
+		v, err := strconv.ParseUint(m[1], 16, 32)
+		if err != nil {
+			continue
+		}
+		if r := rune(v); !seen[r] {
+			seen[r] = true
+			out = append(out, r)
+		}
+	}
+	return out
+}
 
 func AuditPDF(pdfPath string, logPath string) (*VerifyReport, error) {
 	rep := &VerifyReport{}

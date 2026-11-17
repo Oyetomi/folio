@@ -32,20 +32,16 @@ func GetPreamble() string {
 % Uniform full-\textwidth hairline figure frame with smart width capping
 \newsavebox{\foliofigbox}
 \newcommand{\renderdiagramframe}[1]{%
-  \begin{lrbox}{\foliofigbox}%
-    #1%
-  \end{lrbox}%
+  \savebox{\foliofigbox}{#1}%
+  \ifdim\wd\foliofigbox>5.05in
+    \savebox{\foliofigbox}{\resizebox{5.05in}{!}{\usebox{\foliofigbox}}}%
+  \fi
+  \ifdim\ht\foliofigbox>5.5in
+    \savebox{\foliofigbox}{\resizebox{!}{5.5in}{\usebox{\foliofigbox}}}%
+  \fi
   \noindent\begin{tikzpicture}
     \node[draw=figborder,line width=0.45pt,rounded corners=2pt,fill=white,inner xsep=8pt,inner ysep=9pt,minimum width=\textwidth,align=center] {%
-      \ifdim\wd\foliofigbox>5.05in
-        \resizebox{5.05in}{!}{\usebox{\foliofigbox}}%
-      \else
-        \ifdim\ht\foliofigbox>6.2in
-          \resizebox{!}{6.2in}{\usebox{\foliofigbox}}%
-        \else
-          \usebox{\foliofigbox}%
-        \fi
-      \fi
+      \usebox{\foliofigbox}%
     };
   \end{tikzpicture}%
 }
@@ -105,11 +101,18 @@ func wrapTikZ(body string) string {
 }
 
 func WrapFigure(tikzCode string, caption string) string {
+	if caption == "" {
+		return WrapFigureTex(tikzCode, "")
+	}
+	return WrapFigureTex(tikzCode, highlight.LatexEscape(caption))
+}
+
+func WrapFigureTex(tikzCode string, captionTex string) string {
 	var b strings.Builder
 	b.WriteString("\\par\\medskip\\noindent\\begin{minipage}{\\textwidth}\\centering\n")
 	b.WriteString(fmt.Sprintf("\\renderdiagramframe{%s}\n", tikzCode))
-	if caption != "" {
-		b.WriteString(fmt.Sprintf("\\par\\vspace{4pt}{\\itshape\\fontsize{8.8pt}{11pt}\\selectfont\\textcolor{diaggray}{%s}}\n", highlight.LatexEscape(caption)))
+	if captionTex != "" {
+		b.WriteString(fmt.Sprintf("\\par\\vspace{4pt}{\\itshape\\fontsize{8.8pt}{11pt}\\selectfont{\\color{diaggray}%s}}\n", captionTex))
 	}
 	b.WriteString("\\end{minipage}\\par\\medskip\n")
 	return b.String()

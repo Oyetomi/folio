@@ -1,0 +1,19 @@
+title: "Fixture Book"
+subtitle: "Golden Tests for Folio"
+author: "Test Author"
+source: chapters
+output: fixture.pdf
+description: "A tiny book that exercises the full Folio pipeline."
+highlights:
+  - "Parts, chapters, and front matter"
+  - "Index terms and figures"
+author_bio: "**Test Author** writes fixtures."
+parts:
+  - index: 1
+    folder: "part1"
+    title: "Part I: Foundations"
+    description: "Where it all begins."
+  - index: 2
+    folder: "part2"
+    title: "Part II: Practice"
+    description: "Putting it to work."

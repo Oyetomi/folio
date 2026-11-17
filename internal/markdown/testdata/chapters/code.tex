@@ -1,0 +1,32 @@
+% figures: 0
+
+\begin{Verbatim}[commandchars=\\\{\}]
+\textbf{\textcolor{kwcol}{package}} main
+
+\textbf{\textcolor{kwcol}{import}} \textcolor{strcol}{"fmt"}
+
+\textbf{\textcolor{kwcol}{func}} \textcolor{fncol}{main}() \{
+    fmt.\textcolor{fncol}{Println}(\textcolor{strcol}{"hello, world"}) \textit{\textcolor{cmcol}{// greet}}
+\}
+\end{Verbatim}
+
+
+\begin{Verbatim}[commandchars=\\\{\}]
+\textbf{\textcolor{kwcol}{def}} \textcolor{fncol}{area}(r: \textcolor{fncol}{float}) -> \textcolor{fncol}{float}:
+    \textcolor{strcol}{"""Circle area."""}
+    \textbf{\textcolor{kwcol}{return}} \textcolor{numcol}{3.14159} * r ** \textcolor{numcol}{2}
+\end{Verbatim}
+
+
+\begin{Verbatim}[commandchars=\\\{\}]
+\textbf{\textcolor{cmcol}{\$}} \textbf{\textcolor{kwcol}{go}} \textcolor{fncol}{build}\textcolor{typecol}{ -o} folio ./cmd/folio
+\textbf{\textcolor{cmcol}{\$}} \textbf{\textcolor{kwcol}{./folio}} \textcolor{fncol}{build} ./my-book\textcolor{typecol}{ --no-index}\textcolor{typecol}{ -o} out.pdf
+\end{Verbatim}
+
+
+\begin{Verbatim}[commandchars=\\\{\}]
+\textbf{\textcolor{kwcol}{SELECT}} id, name \textbf{\textcolor{kwcol}{FROM}} users \textbf{\textcolor{kwcol}{WHERE}} active = \textcolor{numcol}{1};
+\end{Verbatim}
+
+
+Inline: \inlinecode{fmt.\allowbreak{}Printf(\textquotedbl{}\%d\%\%\textbackslash{}n\textquotedbl{},\allowbreak{} 100)} and \inlinecode{map[string]int\{\}}.

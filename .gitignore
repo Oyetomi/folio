@@ -14,3 +14,9 @@
 .DS_Store
 .idea/
 .vscode/
+
+# Golden test files are LaTeX but must be tracked
+!**/testdata/**/*.tex
+
+# Browser automation scratch output
+.playwright-mcp/

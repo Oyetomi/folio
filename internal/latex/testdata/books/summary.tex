@@ -1,0 +1,382 @@
+\documentclass[10pt,twoside,openany]{book}
+\usepackage[paperwidth=7in,paperheight=9.1875in,top=0.80in,bottom=0.88in,inner=0.88in,outer=0.76in,footskip=0.38in]{geometry}
+\usepackage{amsmath,amssymb,mathrsfs}
+\setcounter{MaxMatrixCols}{30}
+\providecommand{\EE}{\mathbb{E}}
+\providecommand{\PP}{\mathbb{P}}
+\providecommand{\VV}{\mathbb{V}}
+\providecommand{\RR}{\mathbb{R}}
+\providecommand{\NN}{\mathbb{N}}
+\providecommand{\ZZ}{\mathbb{Z}}
+\providecommand{\CC}{\mathbb{C}}
+\providecommand{\QQ}{\mathbb{Q}}
+\providecommand{\argmax}{\operatorname*{arg\,max}}
+\providecommand{\argmin}{\operatorname*{arg\,min}}
+\usepackage{fontspec}
+\usepackage[protrusion=true,expansion=false]{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{fancyvrb}
+\usepackage{fvextra}
+\usepackage{longtable}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{multicol}
+\usepackage{needspace}
+\usepackage{mdframed}
+\usepackage[hidelinks,bookmarksnumbered=true,hypertexnames=false,pdfcreator={},pdfproducer={}]{hyperref}
+
+\let\cleardoublepage\clearpage
+
+\setmainfont{CrimsonPro}[
+  Extension=.ttf,
+  UprightFont=*-Regular,
+  ItalicFont=*-Italic,
+  BoldFont=*-SemiBold,
+  BoldItalicFont=*-SemiBoldItalic,
+  Ligatures=TeX,
+  Scale=1.06
+]
+\setsansfont{SourceSansPro}[
+  Extension=.otf,
+  UprightFont=*-Regular,
+  ItalicFont=*-RegularIt,
+  BoldFont=*-Semibold,
+  BoldItalicFont=*-SemiboldIt,
+  Ligatures=TeX
+]
+\newfontfamily\sanscond{IBMPlexSansCondensed}[
+  Extension=.otf,
+  UprightFont=*-Regular,
+  ItalicFont=*-Italic,
+  BoldFont=*-SemiBold,
+  BoldItalicFont=*-SemiBoldItalic,
+  Ligatures=TeX
+]
+\newfontfamily\sanssemiboldcond{IBMPlexSansCondensed}[
+  Extension=.otf,
+  UprightFont=*-SemiBold,
+  ItalicFont=*-SemiBoldItalic,
+  BoldFont=*-Bold,
+  Ligatures=TeX
+]
+\newfontfamily\sansbold{SourceSansPro}[
+  Extension=.otf,
+  UprightFont=*-Bold,
+  BoldFont=*-Bold,
+  Ligatures=TeX
+]
+
+\setmonofont[
+  Path=fonts/,
+  UprightFont=UbuntuMono-Regular.otf,
+  ItalicFont=UbuntuMono-Italic.otf,
+  BoldFont=UbuntuMono-Bold.otf,
+  BoldItalicFont=UbuntuMono-BoldItalic.otf,
+  Scale=0.88
+]{UbuntuMono}
+
+\linespread{1.12}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5.5pt plus 1.5pt minus 1pt}
+\widowpenalty=10000
+\clubpenalty=10000
+\sloppy
+\tolerance=2000
+\emergencystretch=3em
+\raggedbottom
+
+\makeatletter
+\renewcommand{\numberline}[1]{\hb@xt@ 2.4em{#1\hfil}}
+\makeatother
+
+% --- Editorial Color Palette ---
+\definecolor{brandcrimson}{HTML}{8E0012}
+\definecolor{bodyblack}{HTML}{1A1A1A}
+\definecolor{codebg}{HTML}{F7F8FA}
+\definecolor{codeborder}{HTML}{E1E4E8}
+\definecolor{kwcol}{HTML}{8E0012}
+\definecolor{typecol}{HTML}{2E5B88}
+\definecolor{strcol}{HTML}{2E6B3E}
+\definecolor{numcol}{HTML}{9E5810}
+\definecolor{cmcol}{HTML}{6A737D}
+\definecolor{fncol}{HTML}{4A3870}
+\definecolor{tableheadbg}{HTML}{2C3E50}
+\definecolor{tablerowalt}{HTML}{F4F6F9}
+\definecolor{noteaccent}{HTML}{2E5B88}
+\definecolor{notebg}{HTML}{F4F7FA}
+\definecolor{tipaccent}{HTML}{3E7048}
+\definecolor{tipbg}{HTML}{F2F7F4}
+\definecolor{impaccent}{HTML}{9E4B10}
+\definecolor{impbg}{HTML}{FCF5F0}
+
+\color{bodyblack}
+
+\newcommand{\inlinecode}[1]{{\ttfamily\fontsize{8.7pt}{10.5pt}\selectfont\textcolor{bodyblack}{#1}}}
+\newcommand{\codewrapmark}{\textcolor{cmcol}{\ensuremath{\hookrightarrow}}}
+\fvset{
+  fontsize=\fontsize{8.1pt}{10.2pt}\selectfont,
+  breaklines=true,
+  breakanywhere=true,
+  breakanywheresymbolpre={},
+  breaksymbolright=\codewrapmark,
+  xleftmargin=6pt,
+  xrightmargin=4pt,
+  framesep=5pt
+}
+
+\newmdenv[
+  topline=false,bottomline=false,rightline=false,leftline=true,
+  linewidth=2.4pt,linecolor=noteaccent,backgroundcolor=notebg,
+  innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=7pt,innerbottommargin=7pt,
+  skipabove=7pt,skipbelow=7pt
+]{notebox}
+
+\newmdenv[
+  topline=false,bottomline=false,rightline=false,leftline=true,
+  linewidth=2.4pt,linecolor=tipaccent,backgroundcolor=tipbg,
+  innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=7pt,innerbottommargin=7pt,
+  skipabove=7pt,skipbelow=7pt
+]{tipbox}
+
+\newmdenv[
+  topline=false,bottomline=false,rightline=false,leftline=true,
+  linewidth=2.4pt,linecolor=impaccent,backgroundcolor=impbg,
+  innerleftmargin=10pt,innerrightmargin=10pt,innertopmargin=7pt,innerbottommargin=7pt,
+  skipabove=7pt,skipbelow=7pt
+]{importantbox}
+
+\setlist[itemize]{topsep=3pt,itemsep=2.5pt,parsep=1pt,leftmargin=1.4em}
+\setlist[enumerate]{topsep=3pt,itemsep=2.5pt,parsep=1pt,leftmargin=1.6em}
+
+\titleformat{\section}
+  {\Needspace{4\baselineskip}\sansbold\bfseries\fontsize{13.2pt}{16pt}\selectfont\color{brandcrimson}}
+  {}{0pt}{}
+\titlespacing*{\section}{0pt}{13pt plus 3pt minus 2pt}{4pt}
+
+\titleformat{\subsection}
+  {\Needspace{3\baselineskip}\sansbold\bfseries\fontsize{10.8pt}{13.5pt}\selectfont\color{diagslate}}
+  {}{0pt}{}
+\titlespacing*{\subsection}{0pt}{9pt plus 2pt minus 1pt}{2.5pt}
+
+\newcommand{\currentparttitle}{Book}
+\newcommand{\currentchaptitle}{Introduction}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\fancyfoot[LE]{\sanscond\fontsize{8.2pt}{10pt}\selectfont\textcolor{diaggray}{\thepage\hspace{6pt}|\hspace{6pt}\currentparttitle}}
+\fancyfoot[RO]{\sanscond\fontsize{8.2pt}{10pt}\selectfont\textcolor{diaggray}{\currentchaptitle\hspace{6pt}|\hspace{6pt}\thepage}}
+
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0.4pt}
+  \fancyfoot[LE]{\sanscond\fontsize{8.2pt}{10pt}\selectfont\textcolor{diaggray}{\thepage\hspace{6pt}|\hspace{6pt}\currentparttitle}}
+  \fancyfoot[RO]{\sanscond\fontsize{8.2pt}{10pt}\selectfont\textcolor{diaggray}{\currentchaptitle\hspace{6pt}|\hspace{6pt}\thepage}}
+}
+
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,shapes.geometric,decorations.pathreplacing,calc}
+
+% --- Technical Diagram Palette ---
+\definecolor{figborder}{HTML}{BCC4CC}
+\definecolor{diagslate}{HTML}{3B5B78}
+\definecolor{diagslatefill}{HTML}{EBF1F6}
+\definecolor{diaggray}{HTML}{5A636A}
+\definecolor{diaggrayfill}{HTML}{F5F6F7}
+\definecolor{diagdashed}{HTML}{83919F}
+\definecolor{diagsage}{HTML}{3E7048}
+\definecolor{diagsagefill}{HTML}{EAF3EC}
+\definecolor{diagamber}{HTML}{9E6316}
+\definecolor{diagamberfill}{HTML}{FBF4E8}
+\definecolor{diagcrimson}{HTML}{8E0012}
+\definecolor{diagcrimsonfill}{HTML}{FBEAEA}
+\definecolor{diagpurple}{HTML}{5A467A}
+\definecolor{diagpurplefill}{HTML}{F2EFF8}
+
+% Uniform full-\textwidth hairline figure frame with smart width capping
+\newsavebox{\foliofigbox}
+\newcommand{\renderdiagramframe}[1]{%
+  \savebox{\foliofigbox}{#1}%
+  \ifdim\wd\foliofigbox>5.05in
+    \savebox{\foliofigbox}{\resizebox{5.05in}{!}{\usebox{\foliofigbox}}}%
+  \fi
+  \ifdim\ht\foliofigbox>5.5in
+    \savebox{\foliofigbox}{\resizebox{!}{5.5in}{\usebox{\foliofigbox}}}%
+  \fi
+  \noindent\begin{tikzpicture}
+    \node[draw=figborder,line width=0.45pt,rounded corners=2pt,fill=white,inner xsep=8pt,inner ysep=9pt,minimum width=\textwidth,align=center] {%
+      \usebox{\foliofigbox}%
+    };
+  \end{tikzpicture}%
+}
+
+\tikzset{
+  folioarrow/.style={->,>={Latex[length=4.5pt,width=3.2pt]},line width=0.65pt,draw=diaggray},
+  foliobotharrow/.style={<->,>={Latex[length=4.5pt,width=3.2pt]},line width=0.65pt,draw=diagslate},
+  folioptr/.style={->,>={Latex[length=4.5pt,width=3.2pt]},line width=0.7pt,draw=diagcrimson},
+  folioslatearrow/.style={->,>={Latex[length=4.5pt,width=3.2pt]},line width=0.65pt,draw=diagslate},
+  foliosagearrow/.style={->,>={Latex[length=4.5pt,width=3.2pt]},line width=0.65pt,draw=diagsage},
+  folioamberarrow/.style={->,>={Latex[length=4.5pt,width=3.2pt]},line width=0.65pt,draw=diagamber},
+  foliobox/.style={draw=diagslate,fill=diagslatefill,rounded corners=2.5pt,line width=0.6pt,align=center,inner sep=4.5pt,font=\fontsize{8pt}{9.6pt}\selectfont},
+  folioboxgray/.style={draw=diaggray,fill=diaggrayfill,rounded corners=2.5pt,line width=0.6pt,align=center,inner sep=4.5pt,font=\fontsize{8pt}{9.6pt}\selectfont},
+  folioboxsage/.style={draw=diagsage,fill=diagsagefill,rounded corners=2.5pt,line width=0.6pt,align=center,inner sep=4.5pt,font=\fontsize{8pt}{9.6pt}\selectfont},
+  folioboxamber/.style={draw=diagamber,fill=diagamberfill,rounded corners=2.5pt,line width=0.6pt,align=center,inner sep=4.5pt,font=\fontsize{8pt}{9.6pt}\selectfont},
+  folioboxcrimson/.style={draw=diagcrimson,fill=diagcrimsonfill,rounded corners=2.5pt,line width=0.6pt,align=center,inner sep=4.5pt,font=\fontsize{8pt}{9.6pt}\selectfont},
+  folioboxpurple/.style={draw=diagpurple,fill=diagpurplefill,rounded corners=2.5pt,line width=0.6pt,align=center,inner sep=4.5pt,font=\fontsize{8pt}{9.6pt}\selectfont},
+  folioboxdashed/.style={draw=diagdashed,dashed,fill=white,rounded corners=2.5pt,line width=0.55pt,align=center,inner sep=4.5pt,font=\fontsize{8pt}{9.6pt}\selectfont}
+}
+
+\begin{document}
+
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[white] (current page.south west) rectangle (current page.north east);
+  \fill[brandcrimson] (current page.north west) rectangle ([yshift=-0.28in]current page.north east);
+  \node[anchor=north west, inner sep=0pt, align=left] at ([xshift=0.68in, yshift=-1.45in]current page.north west) {%
+    \begin{minipage}{5.6in}
+      \raggedright
+      {\sansbold\bfseries\fontsize{36pt}{42pt}\selectfont\textcolor{bodyblack}{Summary Book}\par}
+      \vspace{14pt}
+      {\sanscond\fontsize{16pt}{20pt}\selectfont\textcolor{brandcrimson}{}\par}
+    \end{minipage}%
+  };
+  \node[anchor=south east, inner sep=0pt] at ([xshift=-0.68in, yshift=0.65in]current page.south east) {%
+    {\sansbold\bfseries\fontsize{14pt}{18pt}\selectfont\textcolor{bodyblack}{mdBook Author}}%
+  };
+\end{tikzpicture}
+\clearpage
+
+
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+  \fill[tableheadbg] (current page.north west) rectangle ([yshift=-0.16in]current page.north east);
+  \fill[tableheadbg] (current page.south west) rectangle ([yshift=0.16in]current page.south east);
+
+  \draw[black!18, line width=0.6pt] ([xshift=4.32in, yshift=-1.28in]current page.north west) -- ([xshift=4.32in, yshift=1.20in]current page.south west);
+
+  \node[anchor=north west, inner sep=0pt] at ([xshift=0.58in, yshift=-0.65in]current page.north west) {%
+    {\sansbold\bfseries\fontsize{21pt}{24pt}\selectfont\textcolor{bodyblack}{Summary Book}}%
+  };
+
+  \node[anchor=north west, inner sep=0pt] at ([xshift=0.58in, yshift=-1.22in]current page.north west) {%
+    \begin{minipage}[t]{3.48in}
+      \sffamily\fontsize{9.2pt}{13.0pt}\selectfont\color{bodyblack}
+      \setlength{\parskip}{7.5pt}
+      \raggedright
+      \textbf{Summary Book}, written by mdBook Author.
+      
+    \end{minipage}%
+  };
+
+  \node[anchor=north west, inner sep=0pt] at ([xshift=4.52in, yshift=-1.22in]current page.north west) {%
+    \begin{minipage}[t]{1.92in}
+      \sffamily\fontsize{8.8pt}{12.4pt}\selectfont\color{bodyblack}
+      \setlength{\parskip}{8.5pt}
+      \raggedright
+      \textbf{mdBook Author} is the author of \textit{Summary Book}.
+    \end{minipage}%
+  };
+\end{tikzpicture}
+\clearpage
+
+
+\frontmatter
+\thispagestyle{empty}
+\vspace*{1.1in}
+{\sansbold\bfseries\fontsize{26pt}{31pt}\selectfont Summary Book\par}
+\vspace{0.16in}
+{\sanscond\fontsize{14pt}{18pt}\selectfont\textcolor{brandcrimson}{}\par}
+\vfill
+{\sansbold\bfseries\fontsize{13pt}{16pt}\selectfont mdBook Author\par}
+\vspace{0.4in}
+\clearpage
+
+\thispagestyle{empty}
+\vspace*{0.4in}
+{\sansbold\bfseries\fontsize{11pt}{14pt}\selectfont Summary Book\par}
+\noindent by mdBook Author\par
+\vspace{8pt}
+\noindent Copyright \copyright\ mdBook Author.\par
+\vspace{8pt}
+\noindent\textbf{Text License:} Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).\par
+\noindent\textbf{Code License:} MIT License (MIT).\par
+\vspace{8pt}
+
+\clearpage
+
+
+\renewcommand{\currentparttitle}{Table of Contents}
+\renewcommand{\currentchaptitle}{Table of Contents}
+\setcounter{tocdepth}{0}
+{\sansbold\bfseries\fontsize{22pt}{26pt}\selectfont\textcolor{brandcrimson}{Table of Contents}\par}
+\vspace{6pt}
+\noindent\textcolor{brandcrimson}{\rule{\textwidth}{0.8pt}}\par
+\vspace{6pt}
+\makeatletter
+\@starttoc{toc}
+\makeatother
+\clearpage
+
+
+\clearpage
+\phantomsection
+\renewcommand{\currentparttitle}{Front Matter}
+\renewcommand{\currentchaptitle}{Introduction}
+\addcontentsline{toc}{chapter}{Introduction}
+{\sansbold\bfseries\fontsize{21pt}{25pt}\selectfont\textcolor{bodyblack}{Introduction}\par}
+\vspace{4pt}
+\noindent\textcolor{brandcrimson}{\rule{\textwidth}{0.6pt}}\par
+\vspace{8pt}
+
+Welcome to the summary book.
+
+
+\mainmatter
+\renewcommand{\currentparttitle}{Summary Book}
+
+\clearpage
+\phantomsection
+\label{ch:1}
+\renewcommand{\currentchaptitle}{Chapter 1: Getting Started}
+\addcontentsline{toc}{chapter}{\protect\numberline{1}Getting Started}
+\begin{flushright}
+{\sansbold\bfseries\fontsize{34pt}{36pt}\selectfont\textcolor{brandcrimson}{1}\par}
+\end{flushright}
+\vspace{-6pt}
+\noindent\textcolor{brandcrimson}{\rule{\textwidth}{0.7pt}}\par
+\vspace{6pt}
+{\sansbold\bfseries\fontsize{19pt}{23pt}\selectfont\textcolor{bodyblack}{Getting Started}\par}
+\vspace{8pt}
+
+Install the tool.
+
+\begin{Verbatim}[commandchars=\\\{\}]
+\textbf{\textcolor{cmcol}{\$}} \textbf{\textcolor{kwcol}{cargo}} \textcolor{fncol}{install} mdbook
+\end{Verbatim}
+
+
+
+
+\clearpage
+\phantomsection
+\label{ch:2}
+\renewcommand{\currentchaptitle}{Chapter 2: Advanced Topics}
+\addcontentsline{toc}{chapter}{\protect\numberline{2}Advanced Topics}
+\begin{flushright}
+{\sansbold\bfseries\fontsize{34pt}{36pt}\selectfont\textcolor{brandcrimson}{2}\par}
+\end{flushright}
+\vspace{-6pt}
+\noindent\textcolor{brandcrimson}{\rule{\textwidth}{0.7pt}}\par
+\vspace{6pt}
+{\sansbold\bfseries\fontsize{19pt}{23pt}\selectfont\textcolor{bodyblack}{Advanced Topics}\par}
+\vspace{8pt}
+
+Here be \textbf{dragons}.
+
+
+\end{document}

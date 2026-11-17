@@ -1,0 +1,39 @@
+% figures: 3
+
+\par\medskip\noindent\begin{minipage}{\textwidth}\centering
+\renderdiagramframe{\begin{tikzpicture}
+\node[foliobox,minimum width=2.15cm,minimum height=0.80cm] (n_A) at (0.00,0.00) {{\sanssemiboldcond\fontsize{7.9pt}{9.8pt}\selectfont\textcolor{bodyblack}{Primary Sources}}};
+\node[folioboxsage,minimum width=2.15cm,minimum height=0.80cm] (n_B) at (3.45,0.00) {{\sanssemiboldcond\fontsize{7.9pt}{9.8pt}\selectfont\textcolor{bodyblack}{Archival Transcription}}};
+\node[folioboxamber,minimum width=2.15cm,minimum height=0.80cm] (n_C) at (6.90,0.00) {{\sanssemiboldcond\fontsize{7.9pt}{9.8pt}\selectfont\textcolor{bodyblack}{Reliable?}}};
+\node[folioboxsage,minimum width=2.15cm,minimum height=0.80cm] (n_D) at (10.35,0.00) {{\sanssemiboldcond\fontsize{7.9pt}{9.8pt}\selectfont\textcolor{bodyblack}{Published Monograph}}};
+\draw[folioslatearrow] (n_A) -- (n_B);
+\draw[folioslatearrow] (n_B) to[bend left=16] (n_C);
+\draw[folioslatearrow] (n_C) -- (n_D) node[midway,fill=white,inner sep=1.5pt,align=center] {{\sanscond\fontsize{7.1pt}{9.8pt}\selectfont\textcolor{diagslate}{yes}}};
+\draw[folioslatearrow] (n_C) to[bend left=16] node[midway,below=1.5pt,fill=white,inner sep=1.2pt,align=center] {{\sanscond\fontsize{7.0pt}{9.8pt}\selectfont\textcolor{diagslate}{no}}} (n_B);
+\end{tikzpicture}}
+\par\vspace{4pt}{\itshape\fontsize{8.8pt}{11pt}\selectfont{\color{diaggray}Figure 1.1.}}
+\end{minipage}\par\medskip
+
+
+\par\medskip\noindent\begin{minipage}{\textwidth}\centering
+\renderdiagramframe{\begin{tikzpicture}
+\node[foliobox,minimum width=2.45cm,minimum height=0.78cm] (p_Client) at (0.00,0) {{\sanssemiboldcond\fontsize{8.0pt}{9.8pt}\selectfont\textcolor{bodyblack}{Client}}};
+\node[folioboxsage,minimum width=2.45cm,minimum height=0.78cm] (p_Server) at (5.60,0) {{\sanssemiboldcond\fontsize{8.0pt}{9.8pt}\selectfont\textcolor{bodyblack}{Server}}};
+\draw[diagdashed,dashed,line width=0.55pt] (p_Client.south) -- (0.00,-2.39);
+\draw[diagdashed,dashed,line width=0.55pt] (p_Server.south) -- (5.60,-2.39);
+\draw[folioslatearrow] (0.00,-1.26) -- (5.60,-1.26);
+\node[anchor=south,fill=white,inner sep=1.5pt] at (2.80,-1.22) {{\ttfamily\fontsize{7.3pt}{9.6pt}\selectfont\textcolor{bodyblack}{GET /book}}};
+\draw[foliosagearrow,dashed] (5.60,-1.94) -- (0.00,-1.94);
+\node[anchor=south,fill=white,inner sep=1.5pt] at (2.80,-1.90) {{\sanscond\fontsize{7.6pt}{9.8pt}\selectfont\textcolor{bodyblack}{200 OK}}};
+\end{tikzpicture}}
+\par\vspace{4pt}{\itshape\fontsize{8.8pt}{11pt}\selectfont{\color{diaggray}Figure 1.2.}}
+\end{minipage}\par\medskip
+
+
+\par\medskip\noindent\begin{minipage}{\textwidth}\centering
+\renderdiagramframe{\begin{tikzpicture}
+
+\end{tikzpicture}}
+\par\vspace{4pt}{\itshape\fontsize{8.8pt}{11pt}\selectfont{\color{diaggray}Figure 1.3.}}
+\end{minipage}\par\medskip
+

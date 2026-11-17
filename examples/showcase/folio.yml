@@ -1,0 +1,21 @@
+title: "Waiting in Line"
+subtitle: "A Short Introduction to Queues"
+author: "Folio Example"
+source: chapters
+output: waiting-in-line.pdf
+fonts: open
+description: "A small sample book that exercises Folio's typesetting: mathematics, tables, code, diagrams, callouts and an index."
+highlights:
+  - "Little's law and the M/M/1 queue"
+  - "Simulating a queue in Go"
+  - "Vector diagrams from Mermaid"
+author_bio: "This book is part of the Folio repository and exists to show what Folio produces."
+license_text: "Creative Commons Attribution 4.0 International (CC BY 4.0)."
+license_code: "MIT License (MIT)."
+parts:
+  - index: 1
+    title: "Theory"
+    description: "What a queue is, and the two results worth remembering."
+  - index: 2
+    title: "Practice"
+    description: "Measuring and simulating a real queue."

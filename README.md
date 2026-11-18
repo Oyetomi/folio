@@ -89,7 +89,7 @@ The first build downloads the TeX support files Tectonic needs (about 50 MB) and
 folio build ./my-book                                      # a folder of Markdown
 folio build ./novel --no-index -o novel.pdf                # skip the index for fiction
 folio build ./book.epub                                    # an EPUB
-folio build https://github.com/sazardev/networking-with-go # a public repository
+folio build https://github.com/owner/book                  # a public repository
 folio serve                                                # the local web interface
 ```
 
@@ -185,7 +185,7 @@ parts:
 | `no_index` | `true` to leave out the index. |
 | `parts` | Part titles and descriptions, keyed by `index`. |
 
-Folio also reads `go-pretty-pdf.yml`, so projects set up for [go-pretty-converter](https://github.com/sazardev/go-pretty-converter) build without changes.
+Folio also reads `go-pretty-pdf.yml`, so existing projects that use that file build without changes.
 
 </details>
 
@@ -264,7 +264,7 @@ Run `npm run build` in `web/` before committing interface changes, and commit `i
 
 ## Acknowledgements
 
-Folio reads the `go-pretty-pdf.yml` format from Omar Flores Salazar's [go-pretty-converter](https://github.com/sazardev/go-pretty-converter), and his book [Networking with Go](https://github.com/sazardev/networking-with-go) was one of its first real-world tests. PDFs are compiled by [Tectonic](https://tectonic-typesetting.github.io/), and code is highlighted by [Chroma](https://github.com/alecthomas/chroma).
+PDFs are compiled by [Tectonic](https://tectonic-typesetting.github.io/), and code is highlighted by [Chroma](https://github.com/alecthomas/chroma).
 
 ## License
 
